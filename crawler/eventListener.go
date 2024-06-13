@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/GorillaPool/go-junglebus"
+	"github.com/rohenaz/go-bap-indexer/state"
 	"github.com/ttacon/chalk"
 )
 
@@ -37,7 +38,8 @@ func eventListener(subscription *junglebus.Subscription) {
 				var count = txCount
 				if count > 0 {
 					log.Printf("%sBlock %d done with %d transactions%s\n", chalk.Green, event.Height, count, chalk.Reset)
-					blocksDone <- map[uint32]uint32{event.Height: count}
+					state.SaveProgress(event.Height)
+					// blocksDone <- map[uint32]uint32{event.Height: count}
 				}
 				txCount = 0
 				continue
