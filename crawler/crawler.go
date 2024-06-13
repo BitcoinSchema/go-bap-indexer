@@ -272,6 +272,7 @@ func processTx(bobTx *bob.Tx) {
 
 	for _, b := range baps {
 		if valid, err := b.AIP.Validate(); err != nil {
+			// panic(err)
 			log.Printf("Error validating AIP: %s %v", bobTx.Tx.Tx.H, err)
 			continue
 		} else if !valid {
