@@ -24,9 +24,9 @@ var globalClient *Connection
 
 // Connect establishes a connection to the mongo db
 func Connect() error {
-	bmapMongoURL := os.Getenv("MONGO_URL")
+	bmapMongoURL := os.Getenv("MONGO_PRIVATE_URL")
 	if len(bmapMongoURL) == 0 {
-		return fmt.Errorf("set MONGO_URL before running %s", bmapMongoURL)
+		return fmt.Errorf("set MONGO_PRIVATE_URL before running %s", bmapMongoURL)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
