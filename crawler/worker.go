@@ -95,6 +95,7 @@ func saveToMongo(bsonData *bson.M) (err error) {
 	delete(*bsonData, "collection")
 
 	filter := bson.M{"_id": (*bsonData)["_id"]}
+
 	_, err = conn.UpsertOne(collectionName, filter, *bsonData)
 
 	return

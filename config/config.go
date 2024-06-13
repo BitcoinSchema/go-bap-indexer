@@ -3,9 +3,9 @@ package config
 // There are config constants
 const (
 	SkipSPV           = true
-	SubscriptionID    = "5af4235fe3e2a36965a46805a10dd48e0d659467c7f5df0a8c48ba5d32e406dd"
+	SubscriptionID    = "b4a519afce021c9fe81ab684d7983cfe71190437d3dcbd18a6eba9fb185019b0"
 	MinerAPIEndpoint  = "https://mapi.gorillapool.iom/mapi/tx/"
-	JunglebusEndpoint = "https://prod.junglebus.gorillapool.io/"
+	JunglebusEndpoint = "https://junglebus.gorillapool.io/"
 	FromBlock         = 574287 // "Welcome to the Future" post = 574287
 	BockSyncRetries   = 5      // number of retries before block is marked failed
 	DeleteAfterIngest = true   // delete json data files after ingesting to db

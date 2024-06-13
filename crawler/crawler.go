@@ -5,24 +5,29 @@ import (
 	"log"
 	"os"
 	"time"
-	"unicode/utf8"
 
 	"fmt"
 
 	"github.com/GorillaPool/go-junglebus"
 	"github.com/GorillaPool/go-junglebus/models"
-	"github.com/bitcoinschema/go-bmap"
+	"github.com/bitcoinschema/go-aip"
+	"github.com/bitcoinschema/go-bap"
+	"github.com/bitcoinschema/go-bob"
 	"github.com/libsv/go-bt/v2"
 	"github.com/rohenaz/go-bap-indexer/config"
-	"github.com/rohenaz/go-bap-indexer/persist"
+	"github.com/rohenaz/go-bap-indexer/database"
 	"github.com/rohenaz/go-bap-indexer/state"
+	"github.com/rohenaz/go-bap-indexer/types"
 	"github.com/ttacon/chalk"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // var wgs map[uint32]*sync.WaitGroup
 var cancelChannel chan int
 var eventChannel chan *Event
+
+var ctx = context.Background()
 
 func SyncBlocks(height int) (newBlock int) {
 	// Setup crawl timer
@@ -106,15 +111,15 @@ func Crawl(height int) (newHeight int) {
 			}
 		},
 		// Mempool tx callback
-		OnMempool: func(tx *models.TransactionResponse) {
-			log.Printf("[MEM]: %d: %v", tx.BlockHeight, tx.Id)
+		// OnMempool: func(tx *models.TransactionResponse) {
+		// 	log.Printf("[MEM]: %d: %v", tx.BlockHeight, tx.Id)
 
-			eventChannel <- &Event{
-				Type:        "mempool",
-				Transaction: tx.Transaction,
-				Id:          tx.Id,
-			}
-		},
+		// 	eventChannel <- &Event{
+		// 		Type:        "mempool",
+		// 		Transaction: tx.Transaction,
+		// 		Id:          tx.Id,
+		// 	}
+		// },
 		OnStatus: func(status *models.ControlResponse) {
 			if status.Status == "error" {
 				log.Printf("[ERROR %d]: %v", status.StatusCode, status.Message)
@@ -137,7 +142,7 @@ func Crawl(height int) (newHeight int) {
 	fmt.Printf("Initializing from block %d\n", fromBlock)
 
 	var subscription *junglebus.Subscription
-	if subscription, err = junglebusClient.Subscribe(context.Background(), subscriptionID, fromBlock, eventHandler); err != nil {
+	if subscription, err = junglebusClient.Subscribe(ctx, subscriptionID, fromBlock, eventHandler); err != nil {
 		log.Printf("ERROR: failed getting subscription %s", err.Error())
 	}
 
@@ -178,35 +183,30 @@ func processTransactionEvent(rawtx []byte, blockHeight uint32, blockTime uint32)
 			log.Printf("[ERROR]: %v", err)
 			return
 		}
-		bmapTx, err := bmap.NewFromTx(t)
-		if err != nil {
-			log.Printf("[ERROR]: %v", err)
+		var bobTx *bob.Tx
+		if bobTx, err = bob.NewFromTx(t); err != nil {
 			return
 		}
 
-		bmapTx.Blk.I = blockHeight
-		bmapTx.Blk.T = blockTime
+		bobTx.Blk.I = blockHeight
+		bobTx.Blk.T = blockTime
+		processTx(bobTx)
 
-		// log.Printf("[BMAP]: %d: %s | Data Length: %d | First 10 bytes: %x", tx.BlockHeight, bmapTx.Tx.Tx.H, len(tx.Transaction), tx.Transaction[:10])
-
-		processTx(bmapTx)
 	}
 }
 
 func processMempoolEvent(rawtx []byte) {
-
 	t, err := bt.NewTxFromBytes(rawtx)
 	if err != nil {
 		log.Printf("[ERROR]: %v", err)
 		return
 	}
-	bmapTx, err := bmap.NewFromTx(t)
-	if err != nil {
-		log.Printf("[ERROR]: %v", err)
+	var bobTx *bob.Tx
+	if bobTx, err = bob.NewFromTx(t); err != nil {
 		return
 	}
-	log.Printf("[MEMPOOL BMAP]: %d: %s", bmapTx.Blk.I, bmapTx.Tx.Tx.H)
-	processTx(bmapTx)
+
+	processTx(bobTx)
 }
 
 func processBlockDoneEvent(height uint32, count uint32) {
@@ -233,54 +233,119 @@ func processBlockDoneEvent(height uint32, count uint32) {
 
 }
 
-func processTx(bmapData *bmap.Tx) {
-
-	// delete input.Tape from the inputs and outputs
-	for i := range bmapData.Tx.In {
-		bmapData.Tx.In[i].Tape = nil
-	}
-
-	for i := range bmapData.Tx.Out {
-		bmapData.Tx.Out[i].Tape = nil
-	}
-
-	bsonData := bson.M{
-		"_id": bmapData.Tx.Tx.H,
-		"tx":  bmapData.Tx.Tx,
-		"blk": bmapData.Tx.Blk,
-		// go equivalent of Math.round(new Date().getTime() / 1000)
-		"timestamp": time.Now().Unix(),
-		"in":        bmapData.Tx.In,
-		"out":       bmapData.Tx.Out,
-	}
-
-	if bmapData.AIP != nil {
-		bsonData["AIP"] = bmapData.AIP
-	}
-
-	if bmapData.BAP != nil {
-		bsonData["BAP"] = bmapData.BAP
-	}
-
-	if bmapData.Sigma != nil {
-		bsonData["Sigma"] = bmapData.Sigma
-	}
-
-	bsonData["collection"] = "bap"
-
-	for key, value := range bsonData {
-		if str, ok := value.(string); ok {
-			if !utf8.ValidString(str) {
-				log.Printf("Invalid UTF-8 detected in key %s: %s", key, str)
-				return
+func processTx(bobTx *bob.Tx) {
+	baps := make([]types.BapAip, 0)
+	for _, out := range bobTx.Out {
+		var bapAip *types.BapAip
+		for index, tape := range out.Tape {
+			if len(tape.Cell) > 0 && tape.Cell[0].S != nil {
+				prefixData := *tape.Cell[0].S
+				switch prefixData {
+				case bap.Prefix:
+					if bapOut, err := bap.NewFromTape(&out.Tape[index]); err != nil {
+						bapAip = nil
+						continue
+					} else {
+						bapAip = &types.BapAip{
+							BAP: bapOut,
+						}
+					}
+				case aip.Prefix:
+					if bapAip != nil {
+						aipOut := aip.NewFromTape(tape)
+						aipOut.SetDataFromTapes(out.Tape)
+						bapAip.AIP = aipOut
+						baps = append(baps, *bapAip)
+						bapAip = nil
+					}
+				default:
+					if bapAip != nil {
+						bapAip = nil
+					}
+				}
 			}
 		}
 	}
 
-	// 	Write to local filesystem
-	err := persist.SaveLine(fmt.Sprintf("data/%d.json", bmapData.Blk.I), bsonData)
-	if err != nil {
-		log.Printf("[WRITE ERROR]: %v", err)
-		return
+	idColl := database.GetConnection().Database("bap").Collection("identity")
+	atColl := database.GetConnection().Database("bap").Collection("attestation")
+
+	for _, b := range baps {
+		if valid, err := b.AIP.Validate(); err != nil {
+			log.Printf("Error validating AIP: %v", err)
+			continue
+		} else if !valid {
+			continue
+		}
+
+		id := &types.Identity{}
+		if err := idColl.FindOne(
+			ctx,
+			bson.M{"_id": b.BAP.IDKey},
+		).Decode(&id); err == mongo.ErrNoDocuments {
+			id = nil
+		} else if err != nil {
+			panic(err)
+		}
+
+		switch b.BAP.Type {
+		case bap.ID:
+			if id == nil {
+				id = &types.Identity{
+					IDKey:          b.BAP.IDKey,
+					FirstSeen:      bobTx.Tx.Blk.I,
+					RootAddress:    b.AIP.AlgorithmSigningComponent,
+					CurrentAddress: b.BAP.Address,
+					Addresses: []types.Address{
+						{
+							Address: b.BAP.Address,
+							Txid:    bobTx.Tx.Tx.H,
+							Block:   bobTx.Tx.Blk.I,
+						},
+					},
+				}
+				if _, err := idColl.InsertOne(ctx, id); err != nil {
+					panic(err)
+				}
+			} else if id.CurrentAddress == b.AIP.AlgorithmSigningComponent {
+				if _, err := idColl.UpdateOne(ctx, bson.M{"_id": id.IDKey}, bson.M{
+					"$set": bson.M{"currentAddress": b.BAP.Address},
+					"$addToSet": bson.M{"addresses": types.Address{
+						Address: b.BAP.Address,
+						Txid:    bobTx.Tx.Tx.H,
+						Block:   bobTx.Tx.Blk.I,
+					}},
+				}); err != nil {
+					panic(err)
+				}
+			}
+		case bap.ATTEST:
+			if id == nil {
+				panic("Attestation without ID")
+			}
+			attId := fmt.Sprintf("%s:%s:%d", b.BAP.IDKey, b.BAP.URNHash, b.BAP.Sequence)
+			a := &types.Attestation{
+				Id:        attId,
+				Hash:      b.BAP.URNHash,
+				Address:   b.AIP.AlgorithmSigningComponent,
+				Sequence:  b.BAP.Sequence,
+				Block:     bobTx.Tx.Blk.I,
+				Txid:      bobTx.Tx.Tx.H,
+				Timestamp: bobTx.Tx.Blk.T,
+			}
+
+			if _, err := atColl.InsertOne(ctx, a); err != nil {
+				panic(err)
+			}
+
+		case bap.REVOKE:
+			if id == nil {
+				panic("Attestation without ID")
+			}
+			attId := fmt.Sprintf("%s:%s:%d", b.BAP.IDKey, b.BAP.URNHash, b.BAP.Sequence)
+			if _, err := idColl.DeleteOne(ctx, bson.M{"_id": attId}); err != nil {
+				panic(err)
+			}
+		}
 	}
 }
