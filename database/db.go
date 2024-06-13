@@ -13,7 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const databaseName = "bmap"
+const databaseName = "bap"
 
 // Connection is a mongo client
 type Connection struct {

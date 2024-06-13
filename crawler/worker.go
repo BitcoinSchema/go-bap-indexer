@@ -8,8 +8,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/rohenaz/go-bmap-indexer/config"
-	"github.com/rohenaz/go-bmap-indexer/database"
+	"github.com/rohenaz/go-bap-indexer/config"
+	"github.com/rohenaz/go-bap-indexer/database"
 	"github.com/ttacon/chalk"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -87,42 +87,14 @@ func ingest(filepath string) {
 }
 
 func saveToMongo(bsonData *bson.M) (err error) {
+	if bsonData == nil {
+		return fmt.Errorf("bsonData is nil")
+	}
 	conn := database.GetConnection()
-	// if len(bmapData.MAP) == 0 || len(bmapData.MAP[0]) == 0 {
-	// 	return fmt.Errorf("No MAP data")
-	// }
-	// _, ok := bmapData.MAP[0]["app"].(string)
-	// if !ok {
-	// 	return fmt.Errorf("MAP 'app' key does not exist")
-	// }
-
-	// I'm getting an error that this is nil not a string
-	// 	panic: interface conversion: interface {} is nil, not string
-
-	// goroutine 33 [running]:
-	// github.com/rohenaz/go-bmap-indexer/crawler.saveToMongo(0xc000560088)
-	//         /Users/satchmo/code/go-bmap-indexer/crawler/worker.go:99 +0x165
 	collectionName := (*bsonData)["collection"].(string)
 	delete(*bsonData, "collection")
 
 	filter := bson.M{"_id": (*bsonData)["_id"]}
-
-	// bsonData := bson.M{
-	// 	"_id": filter["_id"],
-	// 	"tx":  bmapData.Tx,
-	// 	"blk": bmapData.Blk,
-	// 	"MAP": bmapData.MAP,
-	// }
-
-	// if bmapData.AIP != nil {
-	// 	bsonData["AIP"] = bmapData.AIP
-	// }
-
-	// if bmapData.B != nil {
-	// 	bsonData["B"] = bmapData.B
-	// }
-
-	// log.Println("Inserting into collection", collectionName)
 	_, err = conn.UpsertOne(collectionName, filter, *bsonData)
 
 	return

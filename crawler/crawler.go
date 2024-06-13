@@ -13,12 +13,11 @@ import (
 	"github.com/GorillaPool/go-junglebus/models"
 	"github.com/bitcoinschema/go-bmap"
 	"github.com/libsv/go-bt/v2"
-	"github.com/rohenaz/go-bmap-indexer/config"
-	"github.com/rohenaz/go-bmap-indexer/persist"
-	"github.com/rohenaz/go-bmap-indexer/state"
+	"github.com/rohenaz/go-bap-indexer/config"
+	"github.com/rohenaz/go-bap-indexer/persist"
+	"github.com/rohenaz/go-bap-indexer/state"
 	"github.com/ttacon/chalk"
 	"go.mongodb.org/mongo-driver/bson"
-	"golang.org/x/exp/slices"
 )
 
 // var wgs map[uint32]*sync.WaitGroup
@@ -263,62 +262,11 @@ func processTx(bmapData *bmap.Tx) {
 		bsonData["BAP"] = bmapData.BAP
 	}
 
-	if bmapData.Ord != nil {
-		// remove the data
-		for _, o := range bmapData.Ord {
-			o.Data = []byte{}
-
-			// take only the first 255 characters
-			if len(o.ContentType) > 255 {
-				o.ContentType = o.ContentType[:255]
-			}
-		}
-
-		bsonData["Ord"] = bmapData.Ord
+	if bmapData.Sigma != nil {
+		bsonData["Sigma"] = bmapData.Sigma
 	}
 
-	bitcoinSchemaTypes := []string{"friend", "like", "repost", "post", "message"}
-	if bmapData.B != nil {
-		for _, b := range bmapData.B {
-			// remove the data if its not a message
-			b.Data.Bytes = []byte{}
-			// only if this is a bitcoinschema type, do we keep the data
-			// TODO: Allow user to select the types they want to index fully
-			if len(bmapData.MAP) > 0 && bmapData.MAP[0]["type"] != nil {
-				if !slices.Contains(bitcoinSchemaTypes, fmt.Sprintf("%v", bmapData.MAP[0]["type"])) {
-					b.Data.UTF8 = ""
-				}
-			} else {
-				b.Data.UTF8 = ""
-			}
-			if len(b.MediaType) > 255 {
-				b.MediaType = b.MediaType[:255]
-			}
-		}
-
-		bsonData["B"] = bmapData.B
-	}
-
-	if bmapData.BOOST != nil {
-		bsonData["BOOST"] = bmapData.BOOST
-	}
-
-	if bmapData.MAP == nil {
-		log.Println("No MAP data.")
-		return
-	}
-
-	bsonData["MAP"] = bmapData.MAP
-	if collection, ok := bmapData.MAP[0]["type"].(string); ok {
-		bsonData["collection"] = collection
-	} else {
-		// log.Println("Error: MAP 'type' key does not exist.")
-		return
-	}
-	if _, ok := bmapData.MAP[0]["app"].(string); !ok {
-		// log.Println("Error: MAP 'app' key does not exist.")
-		return
-	}
+	bsonData["collection"] = "bap"
 
 	for key, value := range bsonData {
 		if str, ok := value.(string); ok {

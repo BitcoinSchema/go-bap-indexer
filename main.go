@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/rohenaz/go-bmap-indexer/crawler"
-	"github.com/rohenaz/go-bmap-indexer/state"
+	"github.com/rohenaz/go-bap-indexer/crawler"
+	"github.com/rohenaz/go-bap-indexer/state"
 )
 
 func main() {

@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/rohenaz/go-bmap-indexer/config"
-	"github.com/rohenaz/go-bmap-indexer/database"
+	"github.com/rohenaz/go-bap-indexer/config"
+	"github.com/rohenaz/go-bap-indexer/database"
 	"go.mongodb.org/mongo-driver/bson"
 )
 

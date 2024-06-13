@@ -1,12 +1,17 @@
-module github.com/rohenaz/go-bmap-indexer
+module github.com/rohenaz/go-bap-indexer
 
-go 1.19
+go 1.21.3
 
 require (
 	github.com/GorillaPool/go-junglebus v0.2.10
-	github.com/bitcoinschema/go-bmap v0.1.4
+	github.com/bitcoinschema/go-bmap v0.1.5
 	github.com/ttacon/chalk v0.0.0-20160626202418-22c06c80ed31
 	go.mongodb.org/mongo-driver v1.12.1
+)
+
+require (
+	github.com/bitcoinschema/go-bitcoin/v2 v2.0.5 // indirect
+	github.com/bitcoinschema/go-sigma v0.0.2 // indirect
 )
 
 require (
@@ -44,7 +49,6 @@ require (
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d // indirect
 	golang.org/x/crypto v0.13.0 // indirect
-	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
