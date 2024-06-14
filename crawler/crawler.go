@@ -2,6 +2,7 @@ package crawler
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"os"
 	"time"
@@ -269,6 +270,7 @@ func processTx(bobTx *bob.Tx) {
 
 	idColl := database.GetConnection().Database("bap").Collection("identity")
 	atColl := database.GetConnection().Database("bap").Collection("attestation")
+	proColl := database.GetConnection().Database("bap").Collection("profile")
 
 	for _, b := range baps {
 		if valid, err := b.AIP.Validate(); err != nil {
@@ -346,6 +348,19 @@ func processTx(bobTx *bob.Tx) {
 			attId := fmt.Sprintf("%s:%s:%d", b.BAP.IDKey, b.BAP.URNHash, b.BAP.Sequence)
 			if _, err := idColl.DeleteOne(ctx, bson.M{"_id": attId}); err != nil {
 				panic(err)
+			}
+		case bap.ALIAS:
+			if id == nil {
+				// panic("Attestation without ID")
+				continue
+			}
+			if len(b.BAP.Profile) > 0 {
+				profile := make(map[string]interface{})
+				if err := json.Unmarshal([]byte(b.BAP.Profile), &profile); err != nil {
+					panic(err)
+				} else if _, err := proColl.UpdateOne(ctx, bson.M{"_id": id.IDKey}, bson.M{"$set": bson.M{"data": profile}}); err != nil {
+					panic(err)
+				}
 			}
 		}
 	}

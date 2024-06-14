@@ -4,7 +4,7 @@ go 1.21.3
 
 require (
 	github.com/GorillaPool/go-junglebus v0.2.10
-	github.com/bitcoinschema/go-bmap v0.1.5
+	github.com/bitcoinschema/go-bmap v0.1.8
 	github.com/ttacon/chalk v0.0.0-20160626202418-22c06c80ed31
 	go.mongodb.org/mongo-driver v1.12.1
 )
@@ -15,14 +15,14 @@ require (
 )
 
 require (
-	github.com/bitcoinschema/go-aip v0.2.0
-	github.com/bitcoinschema/go-b v0.1.0 // indirect
-	github.com/bitcoinschema/go-bap v0.3.2
+	github.com/bitcoinschema/go-aip v0.2.2
+	github.com/bitcoinschema/go-b v0.1.1 // indirect
+	github.com/bitcoinschema/go-bap v0.3.3
 	github.com/bitcoinschema/go-bitcoin v0.3.20 // indirect
 	github.com/bitcoinschema/go-bob v0.4.3
 	github.com/bitcoinschema/go-boost v0.1.0 // indirect
 	github.com/bitcoinschema/go-bpu v0.1.3 // indirect
-	github.com/bitcoinschema/go-map v0.1.0 // indirect
+	github.com/bitcoinschema/go-map v0.1.1 // indirect
 	github.com/bitcoinsv/bsvd v0.0.0-20190609155523-4c29707f7173 // indirect
 	github.com/bitcoinsv/bsvlog v0.0.0-20181216181007-cb81b076bf2e // indirect
 	github.com/bitcoinsv/bsvutil v0.0.0-20181216182056-1d77cf353ea9 // indirect
@@ -48,9 +48,9 @@ require (
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d // indirect
-	golang.org/x/crypto v0.14.0 // indirect
-	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/crypto v0.24.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 )
