@@ -354,7 +354,7 @@ func processTx(bobTx *bob.Tx) {
 				// panic("Attestation without ID")
 				continue
 			}
-			if len(b.BAP.Profile) > 0 {
+			if len(b.BAP.Profile) > 0 && b.AIP.AlgorithmSigningComponent == id.CurrentAddress {
 				profile := make(map[string]interface{})
 				if err := json.Unmarshal([]byte(b.BAP.Profile), &profile); err != nil {
 					panic(err)
