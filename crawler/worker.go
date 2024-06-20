@@ -8,8 +8,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/rohenaz/go-bap-indexer/config"
-	"github.com/rohenaz/go-bap-indexer/database"
+	"github.com/BitcoinSchema/go-bap-indexer/config"
+	"github.com/BitcoinSchema/go-bap-indexer/database"
 	"github.com/ttacon/chalk"
 	"go.mongodb.org/mongo-driver/bson"
 )

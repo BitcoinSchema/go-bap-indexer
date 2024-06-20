@@ -1,6 +1,6 @@
 package server
 
-import "github.com/rohenaz/go-bap-indexer/types"
+import "github.com/BitcoinSchema/go-bap-indexer/types"
 
 type Response struct {
 	Status  string `json:"status"`

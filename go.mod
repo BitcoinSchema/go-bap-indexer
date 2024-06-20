@@ -1,4 +1,4 @@
-module github.com/rohenaz/go-bap-indexer
+module github.com/BitcoinSchema/go-bap-indexer
 
 go 1.21.3
 

@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/rohenaz/go-bap-indexer/crawler"
-	"github.com/rohenaz/go-bap-indexer/server"
-	"github.com/rohenaz/go-bap-indexer/state"
+	"github.com/BitcoinSchema/go-bap-indexer/crawler"
+	"github.com/BitcoinSchema/go-bap-indexer/server"
+	"github.com/BitcoinSchema/go-bap-indexer/state"
 )
 
 func main() {

@@ -7,11 +7,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/BitcoinSchema/go-bap-indexer/database"
+	"github.com/BitcoinSchema/go-bap-indexer/types"
 	"github.com/GorillaPool/go-junglebus"
 	"github.com/GorillaPool/go-junglebus/models"
 	"github.com/gofiber/fiber/v2"
-	"github.com/rohenaz/go-bap-indexer/database"
-	"github.com/rohenaz/go-bap-indexer/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )

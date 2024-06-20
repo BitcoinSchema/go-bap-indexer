@@ -3,8 +3,8 @@ package crawler
 import (
 	"log"
 
+	"github.com/BitcoinSchema/go-bap-indexer/state"
 	"github.com/GorillaPool/go-junglebus"
-	"github.com/rohenaz/go-bap-indexer/state"
 	"github.com/ttacon/chalk"
 )
 
