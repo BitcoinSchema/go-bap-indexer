@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -23,7 +23,7 @@ var idColl, atColl, proColl *mongo.Collection
 var jb *junglebus.Client
 var currentBlock *models.BlockHeader
 
-func main() {
+func Start() {
 	var err error
 	if jb, err = junglebus.New(
 		junglebus.WithHTTP("https://junglebus.gorillapool.io"),
