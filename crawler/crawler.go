@@ -268,13 +268,14 @@ func processTx(bobTx *bob.Tx) {
 		}
 	}
 
-	idColl := database.GetConnection().Database("bap").Collection("identity")
-	atColl := database.GetConnection().Database("bap").Collection("attestation")
-	proColl := database.GetConnection().Database("bap").Collection("profile")
+	conn := database.GetConnection()
+	idColl := conn.Database("bap").Collection("id")
+	atColl := conn.Database("bap").Collection("attest")
+	proColl := conn.Database("bap").Collection("profile")
 
 	for _, b := range baps {
+
 		if valid, err := b.AIP.Validate(); err != nil {
-			// panic(err)
 			log.Printf("Error validating AIP: %s %v", bobTx.Tx.Tx.H, err)
 			continue
 		} else if !valid {
@@ -284,7 +285,7 @@ func processTx(bobTx *bob.Tx) {
 		id := &types.Identity{}
 		if err := idColl.FindOne(
 			ctx,
-			bson.M{"_id": b.BAP.IDKey},
+			bson.M{"currentAddress": b.AIP.AlgorithmSigningComponent},
 		).Decode(&id); err == mongo.ErrNoDocuments {
 			id = nil
 		} else if err != nil {
@@ -307,7 +308,7 @@ func processTx(bobTx *bob.Tx) {
 						},
 					},
 				}
-				if _, err := idColl.InsertOne(ctx, id); err != nil {
+				if _, err := idColl.InsertOne(ctx, id); err != nil && !mongo.IsDuplicateKeyError(err) {
 					panic(err)
 				}
 			} else if id.CurrentAddress == b.AIP.AlgorithmSigningComponent {
@@ -324,43 +325,108 @@ func processTx(bobTx *bob.Tx) {
 			}
 		case bap.ATTEST:
 			if id == nil {
-				panic("Attestation without ID")
+				log.Println("ATTEST without ID", bobTx.Tx.Tx.H)
+				continue
+				// panic()
 			}
-			attId := fmt.Sprintf("%s:%s:%d", b.BAP.IDKey, b.BAP.URNHash, b.BAP.Sequence)
-			a := &types.Attestation{
-				Id:        attId,
-				Hash:      b.BAP.URNHash,
+			signer := &types.Signer{
+				IDKey:     id.IDKey,
 				Address:   b.AIP.AlgorithmSigningComponent,
-				Sequence:  b.BAP.Sequence,
-				Block:     bobTx.Tx.Blk.I,
 				Txid:      bobTx.Tx.Tx.H,
+				Block:     bobTx.Tx.Blk.I,
 				Timestamp: bobTx.Tx.Blk.T,
+				Revoked:   false,
 			}
-
-			if _, err := atColl.InsertOne(ctx, a); err != nil {
+			var att *types.Attestation
+			if err := atColl.FindOne(ctx, bson.M{"_id": b.BAP.URNHash}).Decode(&att); err == mongo.ErrNoDocuments {
+				att = &types.Attestation{
+					Id:      b.BAP.URNHash,
+					Signers: []*types.Signer{signer},
+				}
+				if _, err := atColl.InsertOne(ctx, att); err != nil {
+					panic(err)
+				}
+			} else if err != nil {
 				panic(err)
+			} else {
+				found := false
+				for i, s := range att.Signers {
+					if s.IDKey == signer.IDKey {
+						if s.Sequence < signer.Sequence {
+							log.Println("UPDATING ATTEST signer", bobTx.Tx.Tx.H)
+							if _, err := atColl.UpdateOne(ctx,
+								bson.M{
+									"_id": b.BAP.URNHash,
+								},
+								bson.M{"$set": bson.M{fmt.Sprintf("signers.%d", i): signer}},
+							); err != nil {
+								panic(err)
+							}
+						} else {
+							log.Println("Bad ATTEST signer sequence", bobTx.Tx.Tx.H)
+						}
+						found = true
+						break
+					}
+				}
+				if !found {
+					log.Println("Adding ATTEST signer", bobTx.Tx.Tx.H)
+					if _, err := atColl.UpdateOne(ctx,
+						bson.M{
+							"_id": b.BAP.URNHash,
+						},
+						bson.M{"$push": bson.M{"signers": signer}},
+					); err != nil {
+						panic(err)
+					}
+				}
 			}
 
 		case bap.REVOKE:
 			if id == nil {
-				panic("Attestation without ID")
+				log.Println("REVOKE without ID", bobTx.Tx.Tx.H)
+				continue
 			}
-			attId := fmt.Sprintf("%s:%s:%d", b.BAP.IDKey, b.BAP.URNHash, b.BAP.Sequence)
-			if _, err := idColl.DeleteOne(ctx, bson.M{"_id": attId}); err != nil {
+			if _, err := idColl.UpdateOne(ctx,
+				bson.M{"_id": b.BAP.URNHash},
+				bson.M{
+					"$pull": bson.M{
+						"signers": bson.M{
+							"idKey":    id.IDKey,
+							"sequence": bson.M{"$lt": b.BAP.Sequence},
+						},
+					},
+				},
+			); err != nil {
 				panic(err)
 			}
 		case bap.ALIAS:
 			if id == nil {
-				// panic("Attestation without ID")
+				// log.Println("ALIAS without ID", bobTx.Tx.Tx.H)
+				l := map[string]interface{}{
+					"txid": bobTx.Tx.Tx.H,
+					"bap":  b.BAP,
+					"aip":  b.AIP,
+				}
+				j, _ := json.MarshalIndent(l, "", "  ")
+				log.Println("ALIAS without ID", bobTx.Tx.Tx.H, string(j))
 				continue
 			}
-			if len(b.BAP.Profile) > 0 && b.AIP.AlgorithmSigningComponent == id.CurrentAddress {
+			if len(b.BAP.Profile) > 0 && b.BAP.IDKey == id.IDKey {
 				profile := make(map[string]interface{})
 				if err := json.Unmarshal([]byte(b.BAP.Profile), &profile); err != nil {
 					panic(err)
 				} else if _, err := proColl.UpdateOne(ctx, bson.M{"_id": id.IDKey}, bson.M{"$set": bson.M{"data": profile}}); err != nil {
 					panic(err)
 				}
+			} else {
+				l := map[string]interface{}{
+					"txid": bobTx.Tx.Tx.H,
+					"bap":  b.BAP,
+					"aip":  b.AIP,
+				}
+				j, _ := json.MarshalIndent(l, "", "  ")
+				log.Panicln("ALIAS without ID match", string(j))
 			}
 		}
 	}

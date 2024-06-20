@@ -3,15 +3,25 @@ module github.com/rohenaz/go-bap-indexer
 go 1.21.3
 
 require (
-	github.com/GorillaPool/go-junglebus v0.2.10
+	github.com/GorillaPool/go-junglebus v0.3.0-alpha
 	github.com/bitcoinschema/go-bmap v0.1.8
+	github.com/gofiber/fiber/v2 v2.52.4
 	github.com/ttacon/chalk v0.0.0-20160626202418-22c06c80ed31
 	go.mongodb.org/mongo-driver v1.12.1
 )
 
 require (
+	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/bitcoinschema/go-bitcoin/v2 v2.0.5 // indirect
 	github.com/bitcoinschema/go-sigma v0.0.2 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-runewidth v0.0.15 // indirect
+	github.com/rivo/uniseg v0.2.0 // indirect
+	github.com/stretchr/testify v1.9.0 // indirect
+	github.com/valyala/fasthttp v1.52.0 // indirect
+	github.com/valyala/tcplisten v1.0.0 // indirect
 )
 
 require (
@@ -34,7 +44,7 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
-	github.com/klauspost/compress v1.17.0 // indirect
+	github.com/klauspost/compress v1.17.6 // indirect
 	github.com/libsv/go-bk v0.1.6 // indirect
 	github.com/libsv/go-bt v1.0.8 // indirect
 	github.com/libsv/go-bt/v2 v2.2.5
