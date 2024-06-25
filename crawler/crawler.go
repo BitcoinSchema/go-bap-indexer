@@ -22,6 +22,7 @@ import (
 	"github.com/ttacon/chalk"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // var wgs map[uint32]*sync.WaitGroup
@@ -191,7 +192,7 @@ func processTransactionEvent(rawtx []byte, blockHeight uint32, blockTime uint32)
 
 		bobTx.Blk.I = blockHeight
 		bobTx.Blk.T = blockTime
-		processTx(bobTx)
+		ProcessTx(bobTx)
 
 	}
 }
@@ -207,7 +208,7 @@ func processMempoolEvent(rawtx []byte) {
 		return
 	}
 
-	processTx(bobTx)
+	ProcessTx(bobTx)
 }
 
 func processBlockDoneEvent(height uint32, count uint32) {
@@ -234,7 +235,7 @@ func processBlockDoneEvent(height uint32, count uint32) {
 
 }
 
-func processTx(bobTx *bob.Tx) {
+func ProcessTx(bobTx *bob.Tx) {
 	baps := make([]types.BapAip, 0)
 	for _, out := range bobTx.Out {
 		var bapAip *types.BapAip
@@ -416,7 +417,7 @@ func processTx(bobTx *bob.Tx) {
 				profile := make(map[string]interface{})
 				if err := json.Unmarshal([]byte(b.BAP.Profile), &profile); err != nil {
 					panic(err)
-				} else if _, err := proColl.UpdateOne(ctx, bson.M{"_id": id.IDKey}, bson.M{"$set": bson.M{"data": profile}}); err != nil {
+				} else if _, err := proColl.UpdateOne(ctx, bson.M{"_id": id.IDKey}, bson.M{"$set": bson.M{"data": profile}}, options.Update().SetUpsert(true)); err != nil {
 					panic(err)
 				}
 			} else {
