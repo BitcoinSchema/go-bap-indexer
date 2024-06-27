@@ -4,7 +4,7 @@ go 1.21.3
 
 require (
 	github.com/GorillaPool/go-junglebus v0.3.0-alpha
-	github.com/bitcoinschema/go-bmap v0.1.8
+	github.com/bitcoinschema/go-bmap v0.1.9
 	github.com/gofiber/fiber/v2 v2.52.4
 	github.com/ttacon/chalk v0.0.0-20160626202418-22c06c80ed31
 	go.mongodb.org/mongo-driver v1.12.1
@@ -25,7 +25,7 @@ require (
 )
 
 require (
-	github.com/bitcoinschema/go-aip v0.2.2
+	github.com/bitcoinschema/go-aip v0.2.3
 	github.com/bitcoinschema/go-b v0.1.1 // indirect
 	github.com/bitcoinschema/go-bap v0.3.3
 	github.com/bitcoinschema/go-bitcoin v0.3.20 // indirect
