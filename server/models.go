@@ -40,5 +40,5 @@ type AttestationValidResponse struct {
 type IdentityValidResponse struct {
 	types.Identity
 	ValidityRecord
-	Profile map[string]interface{} `json:"identity,omitempty"`
+	Profile interface{} `json:"identity,omitempty"`
 }

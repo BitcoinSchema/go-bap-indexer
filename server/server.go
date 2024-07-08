@@ -200,10 +200,7 @@ func Start() {
 			})
 		}
 		profile := map[string]interface{}{}
-		if err := proColl.FindOne(c.Context(), bson.M{"_id": id.IDKey}).Decode(profile); err == mongo.ErrNoDocuments {
-			log.Println("Profile not found")
-			profile = nil
-		} else if err != nil {
+		if err := proColl.FindOne(c.Context(), bson.M{"_id": id.IDKey}).Decode(profile); err != nil && err != mongo.ErrNoDocuments {
 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
 				Status:  "ERROR",
 				Message: err.Error(),
@@ -244,7 +241,7 @@ func Start() {
 							Block:     req.Block,
 							Timestamp: req.Timestamp,
 						},
-						Profile: profile,
+						Profile: profile["data"],
 					},
 				})
 			}
@@ -279,7 +276,7 @@ func Start() {
 							Block:     req.Block,
 							Timestamp: req.Timestamp,
 						},
-						Profile: profile,
+						Profile: profile["data"],
 					},
 				})
 			}
