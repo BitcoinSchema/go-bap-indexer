@@ -199,7 +199,15 @@ func Start() {
 				Message: err.Error(),
 			})
 		}
-
+		profile := map[string]interface{}{}
+		if err := proColl.FindOne(c.Context(), bson.M{"_id": profile}).Decode(id.Identity); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Status:  "ERROR",
+				Message: err.Error(),
+			})
+		} else {
+			id.Identity = profile
+		}
 		if req.Block == 0 && req.Timestamp == 0 {
 			req.Block = currentBlock.Height
 			req.Timestamp = currentBlock.Time
