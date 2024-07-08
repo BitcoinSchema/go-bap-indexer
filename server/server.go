@@ -34,7 +34,7 @@ func Start() {
 	conn = database.GetConnection()
 	idColl = conn.Database("bap").Collection("id")
 	atColl = conn.Database("bap").Collection("attest")
-	// proColl := conn.Database("bap").Collection("profile")
+	proColl = conn.Database("bap").Collection("profile")
 
 	if currentBlock, err = jb.GetChaintip(context.Background()); err != nil {
 		log.Println(err.Error())
