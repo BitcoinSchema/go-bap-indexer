@@ -27,12 +27,11 @@ type Address struct {
 }
 
 type Identity struct {
-	IDKey          string                 `json:"idKey" bson:"_id"`
-	FirstSeen      uint32                 `json:"firstSeen" bson:"firstSeen"`
-	RootAddress    string                 `json:"rootAddress" bson:"rootAddress"`
-	CurrentAddress string                 `json:"currentAddress" bson:"currentAddress"`
-	Addresses      []Address              `json:"addresses" bson:"addresses"`
-	Identity       map[string]interface{} `json:"identity" bson:"identity"`
+	IDKey          string    `json:"idKey" bson:"_id"`
+	FirstSeen      uint32    `json:"firstSeen" bson:"firstSeen"`
+	RootAddress    string    `json:"rootAddress" bson:"rootAddress"`
+	CurrentAddress string    `json:"currentAddress" bson:"currentAddress"`
+	Addresses      []Address `json:"addresses" bson:"addresses"`
 }
 
 type BapAip struct {

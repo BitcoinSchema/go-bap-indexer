@@ -200,13 +200,13 @@ func Start() {
 			})
 		}
 		profile := map[string]interface{}{}
-		if err := proColl.FindOne(c.Context(), bson.M{"_id": profile}).Decode(id.Identity); err != nil && err != mongo.ErrNoDocuments {
+		if err := proColl.FindOne(c.Context(), bson.M{"_id": profile}).Decode(id.Identity); err == mongo.ErrNoDocuments {
+			profile = nil
+		} else if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
 				Status:  "ERROR",
 				Message: err.Error(),
 			})
-		} else {
-			id.Identity = profile
 		}
 		if req.Block == 0 && req.Timestamp == 0 {
 			req.Block = currentBlock.Height
@@ -243,6 +243,7 @@ func Start() {
 							Block:     req.Block,
 							Timestamp: req.Timestamp,
 						},
+						Profile: profile,
 					},
 				})
 			}
