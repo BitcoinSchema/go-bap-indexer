@@ -200,7 +200,7 @@ func Start() {
 			})
 		}
 		profile := map[string]interface{}{}
-		if err := proColl.FindOne(c.Context(), bson.M{"_id": profile}).Decode(id.Identity); err == mongo.ErrNoDocuments {
+		if err := proColl.FindOne(c.Context(), bson.M{"_id": profile}).Decode(profile); err == mongo.ErrNoDocuments {
 			profile = nil
 		} else if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
