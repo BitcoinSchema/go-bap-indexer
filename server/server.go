@@ -278,6 +278,7 @@ func Start() {
 							Block:     req.Block,
 							Timestamp: req.Timestamp,
 						},
+						Profile: profile,
 					},
 				})
 			}
