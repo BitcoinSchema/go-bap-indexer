@@ -12,6 +12,7 @@ import (
 	"github.com/GorillaPool/go-junglebus"
 	"github.com/GorillaPool/go-junglebus/models"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -51,6 +52,12 @@ func Start() {
 
 	// Initialize a new Fiber app
 	app := fiber.New()
+
+	// Enable CORS for all routes from any origin
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",                                      // Allow all domains
+		AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS", // Allow all methods
+	}))
 
 	// Define a route for the GET method on the root path '/'
 	app.Get("/", func(c *fiber.Ctx) error {
