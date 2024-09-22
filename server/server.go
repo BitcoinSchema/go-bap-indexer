@@ -82,16 +82,48 @@ func Start() {
 		})
 	})
 
+	// app.Post("/v1/identity/get", func(c *fiber.Ctx) error {
+	// 	req := map[string]string{}
+	// 	c.BodyParser(&req)
+	// 	id := &types.Identity{}
+	// 	if err := idColl.FindOne(c.Context(), bson.M{"_id": req["idKey"]}).Decode(id); err != nil {
+	// 		return c.Status(fiber.StatusNotFound).JSON(Response{
+	// 			Status:  "ERROR",
+	// 			Message: "Identity could not be found",
+	// 		})
+	// 	}
+
+	// 	return c.JSON(Response{
+	// 		Status: "OK",
+	// 		Result: id,
+	// 	})
+	// })
+
 	app.Post("/v1/identity/get", func(c *fiber.Ctx) error {
 		req := map[string]string{}
 		c.BodyParser(&req)
 		id := &types.Identity{}
-
 		if err := idColl.FindOne(c.Context(), bson.M{"_id": req["idKey"]}).Decode(id); err != nil {
 			return c.Status(fiber.StatusNotFound).JSON(Response{
 				Status:  "ERROR",
 				Message: "Identity could not be found",
 			})
+		}
+
+		// Fetch the profile associated with the identity
+		profile := map[string]interface{}{}
+		if err := proColl.FindOne(c.Context(), bson.M{"_id": id.IDKey}).Decode(profile); err != nil && err != mongo.ErrNoDocuments {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Status:  "ERROR",
+				Message: err.Error(),
+			})
+		}
+
+		// Assign the profile data to id.Identity
+		if data, exists := profile["data"]; exists {
+			id.Identity = data
+		} else {
+			id.Identity = nil
 		}
 
 		return c.JSON(Response{
