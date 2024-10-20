@@ -101,6 +101,92 @@ func Start() {
 	// 	})
 	// })
 
+	app.Get("/v1/profile", func(c *fiber.Ctx) error {
+		// Default pagination parameters
+		offset := int64(0)
+		limit := int64(20) // Set a default limit
+
+		// Parse 'offset' query parameter
+		if offsetStr := c.Query("offset"); offsetStr != "" {
+			if parsedOffset, err := strconv.ParseInt(offsetStr, 10, 64); err == nil {
+				if parsedOffset >= 0 {
+					offset = parsedOffset
+				} else {
+					return c.Status(fiber.StatusBadRequest).JSON(Response{
+						Status:  "ERROR",
+						Message: "Offset must be a non-negative integer",
+					})
+				}
+			} else {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Status:  "ERROR",
+					Message: "Invalid offset parameter",
+				})
+			}
+		}
+
+		// Optionally, parse 'limit' query parameter
+		if limitStr := c.Query("limit"); limitStr != "" {
+			if parsedLimit, err := strconv.ParseInt(limitStr, 10, 64); err == nil {
+				if parsedLimit > 0 && parsedLimit <= 100 {
+					limit = parsedLimit
+				} else {
+					return c.Status(fiber.StatusBadRequest).JSON(Response{
+						Status:  "ERROR",
+						Message: "Limit must be a positive integer up to 100",
+					})
+				}
+			} else {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Status:  "ERROR",
+					Message: "Invalid limit parameter",
+				})
+			}
+		}
+
+		// Set up options for pagination
+		findOptions := options.Find()
+		findOptions.SetSkip(offset)
+		findOptions.SetLimit(limit)
+		findOptions.SetSort(bson.D{{"timestamp", -1}}) // Adjust sorting as needed
+
+		// Query the profiles collection
+		cursor, err := proColl.Find(c.Context(), bson.M{}, findOptions)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Status:  "ERROR",
+				Message: "Failed to fetch profiles",
+			})
+		}
+		defer cursor.Close(c.Context())
+
+		// Collect profiles into a slice
+		var profiles []map[string]interface{}
+		for cursor.Next(c.Context()) {
+			var profile map[string]interface{}
+			if err := cursor.Decode(&profile); err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(Response{
+					Status:  "ERROR",
+					Message: "Error decoding profile",
+				})
+			}
+			profiles = append(profiles, profile)
+		}
+
+		if err := cursor.Err(); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Status:  "ERROR",
+				Message: "Cursor error",
+			})
+		}
+
+		// Return the list of profiles
+		return c.JSON(Response{
+			Status: "OK",
+			Result: profiles,
+		})
+	})
+
 	app.Get("/v1/identity", func(c *fiber.Ctx) error {
 		// Default pagination parameters
 		offset := int64(0)
