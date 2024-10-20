@@ -3,9 +3,12 @@ package server
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/BitcoinSchema/go-bap-indexer/database"
@@ -100,6 +103,86 @@ func Start() {
 	// 		Result: id,
 	// 	})
 	// })
+
+	app.Get("/person/image/:bapId", func(c *fiber.Ctx) error {
+		bapId := c.Params("bapId")
+		if bapId == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Status:  "ERROR",
+				Message: "BAPID is required",
+			})
+		}
+
+		// Fetch the profile associated with the BAPID
+		profile := map[string]interface{}{}
+		if err := proColl.FindOne(c.Context(), bson.M{"_id": bapId}).Decode(&profile); err == mongo.ErrNoDocuments {
+			return c.Status(fiber.StatusNotFound).JSON(Response{
+				Status:  "ERROR",
+				Message: "Profile not found",
+			})
+		} else if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Status:  "ERROR",
+				Message: err.Error(),
+			})
+		}
+
+		// Extract the image URL from the profile's data field
+		data, dataExists := profile["data"].(map[string]interface{})
+		if !dataExists {
+			return c.Status(fiber.StatusNotFound).JSON(Response{
+				Status:  "ERROR",
+				Message: "Profile data not found",
+			})
+		}
+
+		imageUrl, imageExists := data["image"].(string)
+		if !imageExists || strings.TrimSpace(imageUrl) == "" {
+			return c.Status(fiber.StatusNotFound).JSON(Response{
+				Status:  "ERROR",
+				Message: "Image URL not found in profile",
+			})
+		}
+
+		// Fetch the image data from the URL
+		resp, err := http.Get(imageUrl)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Status:  "ERROR",
+				Message: "Failed to fetch image",
+			})
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return c.Status(fiber.StatusNotFound).JSON(Response{
+				Status:  "ERROR",
+				Message: "Image not found at the specified URL",
+			})
+		}
+
+		// Read the image data
+		imgData, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Status:  "ERROR",
+				Message: "Failed to read image data",
+			})
+		}
+
+		// Determine the content type
+		contentType := resp.Header.Get("Content-Type")
+		if contentType == "" {
+			// Fallback to detecting content type from data
+			contentType = http.DetectContentType(imgData)
+		}
+
+		// Set the appropriate content type header
+		c.Set("Content-Type", contentType)
+
+		// Return the image data as the response
+		return c.Send(imgData)
+	})
 
 	app.Get("/v1/profile", func(c *fiber.Ctx) error {
 		// Default pagination parameters
