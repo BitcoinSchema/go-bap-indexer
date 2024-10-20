@@ -104,7 +104,7 @@ func Start() {
 	// 	})
 	// })
 
-	app.Get("/person/image/:bapId", func(c *fiber.Ctx) error {
+	app.Get("/v1/person/image/:bapId", func(c *fiber.Ctx) error {
 		bapId := c.Params("bapId")
 		if bapId == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
