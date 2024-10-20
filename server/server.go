@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/BitcoinSchema/go-bap-indexer/database"
@@ -100,6 +101,94 @@ func Start() {
 	// 	})
 	// })
 
+	app.Get("/v1/identity", func(c *fiber.Ctx) error {
+		// Default pagination parameters
+		offset := int64(0)
+		limit := int64(20) // You can set a default limit
+
+		// Parse 'offset' query parameter
+		if offsetStr := c.Query("offset"); offsetStr != "" {
+			if parsedOffset, err := strconv.ParseInt(offsetStr, 10, 64); err == nil {
+				if parsedOffset >= 0 {
+					offset = parsedOffset
+				} else {
+					return c.Status(fiber.StatusBadRequest).JSON(Response{
+						Status:  "ERROR",
+						Message: "Offset must be a non-negative integer",
+					})
+				}
+			} else {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Status:  "ERROR",
+					Message: "Invalid offset parameter",
+				})
+			}
+		}
+
+		// Optionally, parse 'limit' query parameter
+		if limitStr := c.Query("limit"); limitStr != "" {
+			if parsedLimit, err := strconv.ParseInt(limitStr, 10, 64); err == nil {
+				if parsedLimit > 0 && parsedLimit <= 100 {
+					limit = parsedLimit
+				} else {
+					return c.Status(fiber.StatusBadRequest).JSON(Response{
+						Status:  "ERROR",
+						Message: "Limit must be a positive integer up to 100",
+					})
+				}
+			} else {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Status:  "ERROR",
+					Message: "Invalid limit parameter",
+				})
+			}
+		}
+
+		// Set up options for pagination
+		findOptions := options.Find()
+		findOptions.SetSkip(offset)
+		findOptions.SetLimit(limit)
+
+		// Optionally, sort identities (e.g., by creation date)
+		findOptions.SetSort(bson.D{{"created_at", -1}}) // Change the field as per your data model
+
+		// Query the identities collection
+		cursor, err := idColl.Find(c.Context(), bson.M{}, findOptions)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Status:  "ERROR",
+				Message: "failed to fetch identities",
+			})
+		}
+		defer cursor.Close(c.Context())
+
+		// Collect identities into a slice
+		var identities []types.Identity
+		for cursor.Next(c.Context()) {
+			var id types.Identity
+			if err := cursor.Decode(&id); err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(Response{
+					Status:  "ERROR",
+					Message: "error decoding identity",
+				})
+			}
+			identities = append(identities, id)
+		}
+
+		if err := cursor.Err(); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Status:  "ERROR",
+				Message: "cursor error",
+			})
+		}
+
+		// Return the list of identities
+		return c.JSON(Response{
+			Status: "OK",
+			Result: identities,
+		})
+	})
+
 	app.Post("/v1/identity/history", func(c *fiber.Ctx) error {
 		// Parse the request body
 		req := map[string]string{}
@@ -123,7 +212,7 @@ func Start() {
 		if err := idColl.FindOne(c.Context(), bson.M{"_id": idKey}).Decode(id); err != nil {
 			return c.Status(fiber.StatusNotFound).JSON(Response{
 				Status:  "ERROR",
-				Message: "Identity could not be found",
+				Message: "identity could not be found",
 			})
 		}
 
