@@ -190,6 +190,8 @@ func Start() {
 			// Set the Content-Type header
 			c.Set("Content-Type", mediaType)
 
+			c.Set("Cache-Control", "public, max-age=86400") // Cache for 1 day
+
 			// Return the image data
 			return c.Send(imgData)
 		} else {
@@ -197,7 +199,7 @@ func Start() {
 			// If the image URL uses a custom protocol (e.g., bitfs://), handle it accordingly
 			if strings.HasPrefix(imageUrl, "bitfs://") {
 				// Convert bitfs://<hash> to a valid HTTP URL
-				imageUrl = "https://x.bitfs.network/" + strings.TrimPrefix(imageUrl, "bitfs://")
+				imageUrl = "https://ordfs.network/" + strings.TrimPrefix(imageUrl, "bitfs://")
 			}
 
 			// Fetch the image data from the URL
