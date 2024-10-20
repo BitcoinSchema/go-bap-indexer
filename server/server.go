@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"strconv"
@@ -144,44 +146,99 @@ func Start() {
 			})
 		}
 
-		// Fetch the image data from the URL
-		resp, err := http.Get(imageUrl)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(Response{
-				Status:  "ERROR",
-				Message: "Failed to fetch image",
-			})
+		if strings.HasPrefix(imageUrl, "data:") {
+			// Handle base64-encoded data URL
+			// Example: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD...
+			commaIndex := strings.Index(imageUrl, ",")
+			if commaIndex < 0 {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Status:  "ERROR",
+					Message: "Invalid data URL format",
+				})
+			}
+
+			// Extract the metadata and data
+			metaData := imageUrl[:commaIndex]
+			base64Data := imageUrl[commaIndex+1:]
+
+			// Parse the media type from the metadata
+			mediaType, params, err := mime.ParseMediaType(metaData)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Status:  "ERROR",
+					Message: "Invalid media type in data URL",
+				})
+			}
+
+			// Ensure the data is base64 encoded
+			if params["base64"] != "base64" {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Status:  "ERROR",
+					Message: "Data URL is not base64 encoded",
+				})
+			}
+
+			// Decode the base64 data
+			imgData, err := base64.StdEncoding.DecodeString(base64Data)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Status:  "ERROR",
+					Message: "Failed to decode base64 image data",
+				})
+			}
+
+			// Set the Content-Type header
+			c.Set("Content-Type", mediaType)
+
+			// Return the image data
+			return c.Send(imgData)
+		} else {
+			// Handle regular image URL
+			// If the image URL uses a custom protocol (e.g., bitfs://), handle it accordingly
+			if strings.HasPrefix(imageUrl, "bitfs://") {
+				// Convert bitfs://<hash> to a valid HTTP URL
+				imageUrl = "https://x.bitfs.network/" + strings.TrimPrefix(imageUrl, "bitfs://")
+			}
+
+			// Fetch the image data from the URL
+			resp, err := http.Get(imageUrl)
+			if err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(Response{
+					Status:  "ERROR",
+					Message: "Failed to fetch image",
+				})
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				return c.Status(fiber.StatusNotFound).JSON(Response{
+					Status:  "ERROR",
+					Message: "Image not found at the specified URL",
+				})
+			}
+
+			// Read the image data
+			imgData, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(Response{
+					Status:  "ERROR",
+					Message: "Failed to read image data",
+				})
+			}
+
+			// Determine the content type
+			contentType := resp.Header.Get("Content-Type")
+			if contentType == "" {
+				// Fallback to detecting content type from data
+				contentType = http.DetectContentType(imgData)
+			}
+
+			// Set the appropriate content type header
+			c.Set("Content-Type", contentType)
+
+			// Return the image data as the response
+			return c.Send(imgData)
 		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return c.Status(fiber.StatusNotFound).JSON(Response{
-				Status:  "ERROR",
-				Message: "Image not found at the specified URL",
-			})
-		}
-
-		// Read the image data
-		imgData, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(Response{
-				Status:  "ERROR",
-				Message: "Failed to read image data",
-			})
-		}
-
-		// Determine the content type
-		contentType := resp.Header.Get("Content-Type")
-		if contentType == "" {
-			// Fallback to detecting content type from data
-			contentType = http.DetectContentType(imgData)
-		}
-
-		// Set the appropriate content type header
-		c.Set("Content-Type", contentType)
-
-		// Return the image data as the response
-		return c.Send(imgData)
 	})
 
 	app.Get("/v1/profile", func(c *fiber.Ctx) error {
