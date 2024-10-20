@@ -171,6 +171,21 @@ func Start() {
 				})
 			}
 
+			// Fetch the profile associated with the identity
+			profile := map[string]interface{}{}
+			if err := proColl.FindOne(c.Context(), bson.M{"_id": id.IDKey}).Decode(&profile); err != nil && err != mongo.ErrNoDocuments {
+				return c.Status(fiber.StatusInternalServerError).JSON(Response{
+					Status:  "ERROR",
+					Message: err.Error(),
+				})
+			}
+
+			// Extract the 'data' field from the profile
+			var identityData interface{} = nil
+			if data, exists := profile["data"]; exists {
+				identityData = data
+			}
+
 			// Build the response object
 			identityResponse := map[string]interface{}{
 				"idKey":          id.IDKey,
@@ -178,7 +193,7 @@ func Start() {
 				"rootAddress":    id.RootAddress,
 				"currentAddress": id.CurrentAddress,
 				"addresses":      id.Addresses,
-				"identity":       id.Identity,
+				"identity":       identityData,
 			}
 
 			identities = append(identities, identityResponse)
