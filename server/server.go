@@ -104,7 +104,7 @@ func Start() {
 	app.Get("/v1/identity", func(c *fiber.Ctx) error {
 		// Default pagination parameters
 		offset := int64(0)
-		limit := int64(20) // You can set a default limit
+		limit := int64(20) // Set a default limit
 
 		// Parse 'offset' query parameter
 		if offsetStr := c.Query("offset"); offsetStr != "" {
@@ -148,37 +148,46 @@ func Start() {
 		findOptions := options.Find()
 		findOptions.SetSkip(offset)
 		findOptions.SetLimit(limit)
-
-		// Optionally, sort identities (e.g., by creation date)
-		findOptions.SetSort(bson.D{{"created_at", -1}}) // Change the field as per your data model
+		findOptions.SetSort(bson.D{{"firstSeen", -1}}) // Adjust sorting as needed
 
 		// Query the identities collection
 		cursor, err := idColl.Find(c.Context(), bson.M{}, findOptions)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
 				Status:  "ERROR",
-				Message: "failed to fetch identities",
+				Message: "Failed to fetch identities",
 			})
 		}
 		defer cursor.Close(c.Context())
 
 		// Collect identities into a slice
-		var identities []types.Identity
+		var identities []map[string]interface{}
 		for cursor.Next(c.Context()) {
 			var id types.Identity
 			if err := cursor.Decode(&id); err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(Response{
 					Status:  "ERROR",
-					Message: "error decoding identity",
+					Message: "Error decoding identity",
 				})
 			}
-			identities = append(identities, id)
+
+			// Build the response object
+			identityResponse := map[string]interface{}{
+				"idKey":          id.IDKey,
+				"firstSeen":      id.FirstSeen,
+				"rootAddress":    id.RootAddress,
+				"currentAddress": id.CurrentAddress,
+				"addresses":      id.Addresses,
+				"identity":       id.Identity,
+			}
+
+			identities = append(identities, identityResponse)
 		}
 
 		if err := cursor.Err(); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
 				Status:  "ERROR",
-				Message: "cursor error",
+				Message: "Cursor error",
 			})
 		}
 
