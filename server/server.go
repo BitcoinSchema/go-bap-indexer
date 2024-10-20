@@ -148,7 +148,6 @@ func Start() {
 
 		if strings.HasPrefix(imageUrl, "data:") {
 			// Handle base64-encoded data URL
-			// Example: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD...
 			commaIndex := strings.Index(imageUrl, ",")
 			if commaIndex < 0 {
 				return c.Status(fiber.StatusBadRequest).JSON(Response{
@@ -158,7 +157,8 @@ func Start() {
 			}
 
 			// Extract the metadata and data
-			metaData := imageUrl[:commaIndex]
+			// Remove "data:" prefix from metaData
+			metaData := strings.TrimPrefix(imageUrl[:commaIndex], "data:")
 			base64Data := imageUrl[commaIndex+1:]
 
 			// Parse the media type from the metadata
@@ -189,8 +189,6 @@ func Start() {
 
 			// Set the Content-Type header
 			c.Set("Content-Type", mediaType)
-
-			c.Set("Cache-Control", "public, max-age=86400") // Cache for 1 day
 
 			// Return the image data
 			return c.Send(imgData)
