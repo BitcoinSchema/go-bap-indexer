@@ -15,6 +15,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var TRUE = true
@@ -98,6 +99,74 @@ func Start() {
 	// 		Result: id,
 	// 	})
 	// })
+
+	app.Post("/v1/identity/history", func(c *fiber.Ctx) error {
+		// Parse the request body
+		req := map[string]string{}
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Status:  "ERROR",
+				Message: "Invalid request body",
+			})
+		}
+
+		idKey := req["idKey"]
+		if idKey == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Status:  "ERROR",
+				Message: "idKey is required",
+			})
+		}
+
+		// Find the identity to ensure it exists
+		id := &types.Identity{}
+		if err := idColl.FindOne(c.Context(), bson.M{"_id": idKey}).Decode(id); err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(Response{
+				Status:  "ERROR",
+				Message: "Identity could not be found",
+			})
+		}
+
+		// Set up options to sort profiles by timestamp (ascending)
+		opts := options.Find()
+		opts.SetSort(bson.D{{"timestamp", 1}}) // Change to -1 for descending order
+
+		// Fetch all profiles associated with the identity
+		cursor, err := proColl.Find(c.Context(), bson.M{"idKey": idKey}, opts)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Status:  "ERROR",
+				Message: err.Error(),
+			})
+		}
+		defer cursor.Close(c.Context())
+
+		// Collect profiles into a slice
+		var profiles []map[string]interface{}
+		for cursor.Next(c.Context()) {
+			var profile map[string]interface{}
+			if err := cursor.Decode(&profile); err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(Response{
+					Status:  "ERROR",
+					Message: err.Error(),
+				})
+			}
+			profiles = append(profiles, profile)
+		}
+
+		if err := cursor.Err(); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Status:  "ERROR",
+				Message: err.Error(),
+			})
+		}
+
+		// Return the profiles in the response
+		return c.JSON(Response{
+			Status: "OK",
+			Result: profiles,
+		})
+	})
 
 	app.Post("/v1/identity/get", func(c *fiber.Ctx) error {
 		req := map[string]string{}
