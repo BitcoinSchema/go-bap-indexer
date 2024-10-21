@@ -159,6 +159,10 @@ func Start() {
 			// Extract the metadata and data
 			// Remove "data:" prefix from metaData
 			metaData := strings.TrimPrefix(imageUrl[:commaIndex], "data:")
+			// metadata = image/jpeg;base64
+			metaData = strings.Split(metaData, ";")[0]
+			// metadata = image/jpeg
+
 			base64Data := imageUrl[commaIndex+1:]
 
 			// Parse the media type from the metadata
@@ -166,9 +170,11 @@ func Start() {
 			if err != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(Response{
 					Status:  "ERROR",
-					Message: "Invalid media type in data URL" + metaData + " " + err.Error(),
+					Message: "Invalid media type in data URL " + metaData + " " + err.Error(),
 				})
 			}
+
+			// image/jpeg;base64
 
 			// Ensure the data is base64 encoded
 			if params["base64"] != "base64" {
