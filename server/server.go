@@ -166,7 +166,7 @@ func Start() {
 			if err != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(Response{
 					Status:  "ERROR",
-					Message: "Invalid media type in data URL",
+					Message: "Invalid media type in data URL" + metaData + " " + err.Error(),
 				})
 			}
 
