@@ -106,7 +106,15 @@ func Start() {
 	// 	})
 	// })
 
-	app.Get("/v1/person/image/:bapId", func(c *fiber.Ctx) error {
+	app.Get("/v1/person/:field/:bapId", func(c *fiber.Ctx) error {
+		field := c.Params("field")
+		if field == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Status:  "ERROR",
+				Message: "Field is required",
+			})
+		}
+
 		bapId := c.Params("bapId")
 		if bapId == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
@@ -138,11 +146,11 @@ func Start() {
 			})
 		}
 
-		imageUrl, imageExists := data["image"].(string)
+		imageUrl, imageExists := data[field].(string)
 		if !imageExists || strings.TrimSpace(imageUrl) == "" {
 			return c.Status(fiber.StatusNotFound).JSON(Response{
 				Status:  "ERROR",
-				Message: "Image URL not found in profile",
+				Message: field + " URL not found in profile",
 			})
 		}
 
@@ -196,9 +204,26 @@ func Start() {
 		} else {
 			// Handle regular image URL
 			// If the image URL uses a custom protocol (e.g., bitfs://), handle it accordingly
+			// Handle regular image URL
 			if strings.HasPrefix(imageUrl, "bitfs://") {
-				// Convert bitfs://<hash> to a valid HTTP URL
-				imageUrl = "https://ordfs.network/" + strings.TrimPrefix(imageUrl, "bitfs://")
+				// Convert bitfs://<txid>.out.<vout>.<script_chunk> to https://ordfs.network/<txid>_<vout>
+				baseUrl := "https://ordfs.network/"
+				// Remove the "bitfs://" prefix
+				path := strings.TrimPrefix(imageUrl, "bitfs://")
+				// Split the path by "."
+				parts := strings.Split(path, ".")
+				if len(parts) >= 3 && parts[1] == "out" {
+					txid := parts[0]
+					vout := parts[2]
+					// Construct the new URL
+					imageUrl = baseUrl + txid + "_" + vout
+				} else {
+					// Handle error: unexpected format
+					return c.Status(fiber.StatusBadRequest).JSON(Response{
+						Status:  "ERROR",
+						Message: "Invalid bitfs URL format",
+					})
+				}
 			}
 
 			// Fetch the image data from the URL
