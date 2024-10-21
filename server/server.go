@@ -160,13 +160,15 @@ func Start() {
 			// Remove "data:" prefix from metaData
 			metaData := strings.TrimPrefix(imageUrl[:commaIndex], "data:")
 			// metadata = image/jpeg;base64
-			metaData = strings.Split(metaData, ";")[0]
+			metaDataParts := strings.Split(metaData, ";")
+
+			metaData = metaDataParts[0]
 			// metadata = image/jpeg
 
 			base64Data := imageUrl[commaIndex+1:]
 
 			// Parse the media type from the metadata
-			mediaType, params, err := mime.ParseMediaType(metaData)
+			mediaType, _, err := mime.ParseMediaType(metaData)
 			if err != nil {
 				return c.Status(fiber.StatusBadRequest).JSON(Response{
 					Status:  "ERROR",
@@ -175,14 +177,7 @@ func Start() {
 			}
 
 			// image/jpeg;base64
-
-			// Ensure the data is base64 encoded
-			if params["base64"] != "base64" {
-				return c.Status(fiber.StatusBadRequest).JSON(Response{
-					Status:  "ERROR",
-					Message: "Data URL is not base64 encoded",
-				})
-			}
+			log.Println(("Data URL: " + base64Data))
 
 			// Decode the base64 data
 			imgData, err := base64.StdEncoding.DecodeString(base64Data)
