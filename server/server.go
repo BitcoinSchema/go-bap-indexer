@@ -214,9 +214,9 @@ func Start() {
 				parts := strings.Split(path, ".")
 				if len(parts) >= 3 && parts[1] == "out" {
 					txid := parts[0]
-					vout := parts[2]
+					// vout := parts[2]
 					// Construct the new URL
-					imageUrl = baseUrl + txid + "_" + vout
+					imageUrl = baseUrl + txid // + "_" + vout
 				} else {
 					// Handle error: unexpected format
 					return c.Status(fiber.StatusBadRequest).JSON(Response{
