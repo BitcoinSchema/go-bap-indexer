@@ -227,6 +227,11 @@ func Start() {
 			}
 
 			// Fetch the image data from the URL
+			// if imageUrl.startsWith
+			if strings.HasPrefix(imageUrl, "/") {
+				imageUrl = "https://ordfs.network" + imageUrl
+			}
+
 			resp, err := http.Get(imageUrl)
 			if err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(Response{
