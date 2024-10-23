@@ -231,7 +231,7 @@ func Start() {
 			if err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(Response{
 					Status:  "ERROR",
-					Message: "Failed to fetch image",
+					Message: "Failed to fetch image at " + imageUrl + err.Error(),
 				})
 			}
 			defer resp.Body.Close()
