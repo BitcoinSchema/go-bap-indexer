@@ -137,6 +137,12 @@ func Start() {
 			})
 		}
 
+		// if bap ID
+		// if len(bapId) > 30 {
+		// 	// TODO: consider it an address, find match based on match on addresses field
+
+		// }
+
 		// Extract the image URL from the profile's data field
 		data, dataExists := profile["data"].(map[string]interface{})
 		if !dataExists {
@@ -148,10 +154,12 @@ func Start() {
 
 		imageUrl, imageExists := data[field].(string)
 		if !imageExists || strings.TrimSpace(imageUrl) == "" {
-			return c.Status(fiber.StatusNotFound).JSON(Response{
-				Status:  "ERROR",
-				Message: field + " URL not found in profile",
-			})
+			// return the default image url
+			imageUrl = "/096b5fdcb6e88f8f0325097acca2784eabd62cd4d1e692946695060aff3d6833_7"
+			// return c.Status(fiber.StatusNotFound).JSON(Response{
+			// 	Status:  "ERROR",
+			// 	Message: field + " URL not found in profile",
+			// })
 		}
 
 		if strings.HasPrefix(imageUrl, "data:") {
