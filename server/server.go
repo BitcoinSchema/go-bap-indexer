@@ -582,26 +582,66 @@ func Start() {
 	type IdentitiesRequest struct {
 		IdKeys []string `json:"idKeys"`
 	}
+	// Define a struct to match the incoming JSON structure
+	type IdentityRequest struct {
+		IdKeys    []string `json:"idKeys"`
+		Addresses []string `json:"addresses"`
+	}
 
 	app.Post("/v1/identities/get", func(c *fiber.Ctx) error {
-
 		// Parse the request body into the IdentityRequest struct
-		req := IdentitiesRequest{}
+		req := IdentityRequest{}
 		if err := c.BodyParser(&req); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Status:  "ERROR",
 				Message: "Invalid request body",
 			})
 		}
+
+		// Ensure that at least one of idKeys or addresses is provided
+		if len(req.IdKeys) == 0 && len(req.Addresses) == 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Status:  "ERROR",
+				Message: "Either idKeys or addresses must be provided",
+			})
+		}
+
 		ids := []types.Identity{}
 
-		// Iterate over each idKey in req.IdKeys
-		for _, idKey := range req.IdKeys {
-			id := &types.Identity{}
-			if err := idColl.FindOne(c.Context(), bson.M{"_id": idKey}).Decode(id); err != nil {
-				return c.Status(fiber.StatusNotFound).JSON(Response{
+		// Build the MongoDB query filter using $or
+		filter := bson.M{}
+		orConditions := []bson.M{}
+
+		if len(req.IdKeys) > 0 {
+			orConditions = append(orConditions, bson.M{"_id": bson.M{"$in": req.IdKeys}})
+		}
+
+		if len(req.Addresses) > 0 {
+			// Match identities where AIP[0].algorithm_signing_component is in req.Addresses
+			orConditions = append(orConditions, bson.M{
+				"AIP.algorithm_signing_component": bson.M{"$in": req.Addresses},
+			})
+		}
+
+		filter["$or"] = orConditions
+
+		// Execute the query
+		cursor, err := idColl.Find(c.Context(), filter)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Status:  "ERROR",
+				Message: err.Error(),
+			})
+		}
+		defer cursor.Close(c.Context())
+
+		// Iterate over the results
+		for cursor.Next(c.Context()) {
+			id := types.Identity{}
+			if err := cursor.Decode(&id); err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(Response{
 					Status:  "ERROR",
-					Message: "Identity could not be found: " + idKey,
+					Message: err.Error(),
 				})
 			}
 
@@ -621,7 +661,14 @@ func Start() {
 				id.Identity = nil
 			}
 
-			ids = append(ids, *id)
+			ids = append(ids, id)
+		}
+
+		if err := cursor.Err(); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Status:  "ERROR",
+				Message: err.Error(),
+			})
 		}
 
 		return c.JSON(Response{
