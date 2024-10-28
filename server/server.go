@@ -579,18 +579,15 @@ func Start() {
 		})
 	})
 
-	type IdentitiesRequest struct {
-		IdKeys []string `json:"idKeys"`
-	}
 	// Define a struct to match the incoming JSON structure
-	type IdentityRequest struct {
+	type IdentitiesRequest struct {
 		IdKeys    []string `json:"idKeys"`
 		Addresses []string `json:"addresses"`
 	}
 
 	app.Post("/v1/identities/get", func(c *fiber.Ctx) error {
 		// Parse the request body into the IdentityRequest struct
-		req := IdentityRequest{}
+		req := IdentitiesRequest{}
 		if err := c.BodyParser(&req); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(Response{
 				Status:  "ERROR",
@@ -619,7 +616,7 @@ func Start() {
 		if len(req.Addresses) > 0 {
 			// Match identities where AIP[0].algorithm_signing_component is in req.Addresses
 			orConditions = append(orConditions, bson.M{
-				"AIP.algorithm_signing_component": bson.M{"$in": req.Addresses},
+				"addresses.address": bson.M{"$in": req.Addresses},
 			})
 		}
 
