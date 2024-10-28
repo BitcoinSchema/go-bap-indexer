@@ -579,6 +579,48 @@ func Start() {
 		})
 	})
 
+	app.Post("/v1/identities/get", func(c *fiber.Ctx) error {
+		req := map[string]string{}
+		c.BodyParser(&req)
+		ids := []types.Identity{}
+
+		// get the idKeys field which is an array of string
+		idKeys := req["idKeys"]
+
+		for _, idKey := range strings.Split(idKeys, ",") {
+			id := &types.Identity{}
+			if err := idColl.FindOne(c.Context(), bson.M{"_id": idKey}).Decode(id); err != nil {
+				return c.Status(fiber.StatusNotFound).JSON(Response{
+					Status:  "ERROR",
+					Message: "Identity could not be found",
+				})
+			}
+
+			// Fetch the profile associated with the identity
+			profile := map[string]interface{}{}
+			if err := proColl.FindOne(c.Context(), bson.M{"_id": id.IDKey}).Decode(profile); err != nil && err != mongo.ErrNoDocuments {
+				return c.Status(fiber.StatusInternalServerError).JSON(Response{
+					Status:  "ERROR",
+					Message: err.Error(),
+				})
+			}
+
+			// Assign the profile data to id.Identity
+			if data, exists := profile["data"]; exists {
+				id.Identity = data
+			} else {
+				id.Identity = nil
+			}
+
+			ids = append(ids, *id)
+		}
+
+		return c.JSON(Response{
+			Status: "OK",
+			Result: ids,
+		})
+	})
+
 	app.Post("/v1/identity/getByAddress", func(c *fiber.Ctx) error {
 		req := map[string]string{}
 		c.BodyParser(&req)
