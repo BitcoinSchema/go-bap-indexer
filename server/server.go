@@ -579,20 +579,29 @@ func Start() {
 		})
 	})
 
+	type IdentitiesRequest struct {
+		IdKeys []string `json:"idKeys"`
+	}
+
 	app.Post("/v1/identities/get", func(c *fiber.Ctx) error {
-		req := map[string]string{}
-		c.BodyParser(&req)
+
+		// Parse the request body into the IdentityRequest struct
+		req := IdentitiesRequest{}
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Status:  "ERROR",
+				Message: "Invalid request body",
+			})
+		}
 		ids := []types.Identity{}
 
-		// get the idKeys field which is an array of string
-		idKeys := req["idKeys"]
-
-		for _, idKey := range strings.Split(idKeys, ",") {
+		// Iterate over each idKey in req.IdKeys
+		for _, idKey := range req.IdKeys {
 			id := &types.Identity{}
 			if err := idColl.FindOne(c.Context(), bson.M{"_id": idKey}).Decode(id); err != nil {
 				return c.Status(fiber.StatusNotFound).JSON(Response{
 					Status:  "ERROR",
-					Message: "Identity could not be found",
+					Message: "Identity could not be found: " + idKey,
 				})
 			}
 
