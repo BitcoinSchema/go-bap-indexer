@@ -156,10 +156,11 @@ func Start() {
 		if !imageExists || strings.TrimSpace(imageUrl) == "" {
 			// return the default image url
 			imageUrl = "/096b5fdcb6e88f8f0325097acca2784eabd62cd4d1e692946695060aff3d6833_7"
-			// return c.Status(fiber.StatusNotFound).JSON(Response{
-			// 	Status:  "ERROR",
-			// 	Message: field + " URL not found in profile",
-			// })
+		}
+
+		// Check if the imageUrl is a raw txid (64 character hex string)
+		if len(imageUrl) == 64 && !strings.HasPrefix(imageUrl, "/") && !strings.HasPrefix(imageUrl, "http") && !strings.HasPrefix(imageUrl, "data:") {
+			imageUrl = "/" + imageUrl
 		}
 
 		if strings.HasPrefix(imageUrl, "data:") {
