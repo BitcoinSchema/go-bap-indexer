@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/BitcoinSchema/go-bap-indexer/state"
-	"github.com/GorillaPool/go-junglebus"
+	"github.com/b-open-io/go-junglebus"
 	"github.com/ttacon/chalk"
 )
 

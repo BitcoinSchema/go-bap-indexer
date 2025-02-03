@@ -15,8 +15,8 @@ import (
 
 	"github.com/BitcoinSchema/go-bap-indexer/database"
 	"github.com/BitcoinSchema/go-bap-indexer/types"
-	"github.com/GorillaPool/go-junglebus"
-	"github.com/GorillaPool/go-junglebus/models"
+	"github.com/b-open-io/go-junglebus"
+	"github.com/b-open-io/go-junglebus/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -44,14 +44,14 @@ func Start() {
 	atColl = conn.Database("bap").Collection("attest")
 	proColl = conn.Database("bap").Collection("profile")
 
-	if currentBlock, err = jb.GetChaintip(context.Background()); err != nil {
+	if currentBlock, err = jb.GetChainTip(context.Background()); err != nil {
 		log.Println(err.Error())
 	}
 
 	go func() {
 		ticker := time.NewTicker(time.Minute)
 		for range ticker.C {
-			if currentBlock, err = jb.GetChaintip(context.Background()); err != nil {
+			if currentBlock, err = jb.GetChainTip(context.Background()); err != nil {
 				log.Println(err.Error())
 			}
 		}
