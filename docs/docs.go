@@ -9,7 +9,16 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "contact": {},
+        "termsOfService": "https://api.sigmaidentity.com/terms/",
+        "contact": {
+            "name": "Sigma Identity API Support",
+            "url": "https://github.com/BitcoinSchema/go-bap-indexer",
+            "email": "support@sigmaidentity.com"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
@@ -40,7 +49,7 @@ const docTemplate = `{
         },
         "/attestation/get": {
             "post": {
-                "description": "Get an attestation by its hash",
+                "description": "Retrieves an attestation using its unique hash identifier",
                 "consumes": [
                     "application/json"
                 ],
@@ -50,7 +59,7 @@ const docTemplate = `{
                 "tags": [
                     "attestation"
                 ],
-                "summary": "Get attestation",
+                "summary": "Get attestation by hash",
                 "parameters": [
                     {
                         "description": "Attestation hash",
@@ -64,13 +73,25 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Successful response with attestation data",
                         "schema": {
-                            "$ref": "#/definitions/server.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/server.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "result": {
+                                            "$ref": "#/definitions/types.Attestation"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Attestation not found",
                         "schema": {
                             "$ref": "#/definitions/server.Response"
                         }
@@ -139,13 +160,72 @@ const docTemplate = `{
     },
     "definitions": {
         "server.Response": {
+            "description": "Standard API response wrapper",
             "type": "object",
             "properties": {
                 "message": {
+                    "description": "Optional error message",
+                    "type": "string",
+                    "example": "Operation completed successfully"
+                },
+                "result": {
+                    "description": "Response payload"
+                },
+                "status": {
+                    "description": "Status of the response (\"OK\" or \"ERROR\")",
+                    "type": "string",
+                    "example": "OK"
+                }
+            }
+        },
+        "types.Attestation": {
+            "type": "object",
+            "properties": {
+                "attribute": {
                     "type": "string"
                 },
-                "result": {},
-                "status": {
+                "hash": {
+                    "type": "string"
+                },
+                "nonce": {
+                    "type": "string"
+                },
+                "signers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.Signer"
+                    }
+                },
+                "urn": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "types.Signer": {
+            "type": "object",
+            "properties": {
+                "block": {
+                    "type": "integer"
+                },
+                "idKey": {
+                    "type": "string"
+                },
+                "revoked": {
+                    "type": "boolean"
+                },
+                "sequence": {
+                    "type": "integer"
+                },
+                "signingAddress": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "txId": {
                     "type": "string"
                 }
             }
@@ -155,12 +235,12 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
-	Host:             "",
-	BasePath:         "",
-	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	Version:          "1.0",
+	Host:             "api.sigmaidentity.com",
+	BasePath:         "/v1",
+	Schemes:          []string{"https"},
+	Title:            "Sigma Identity API",
+	Description:      "Bitcoin Attestation Protocol (BAP) indexer API for managing digital identities and attestations",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

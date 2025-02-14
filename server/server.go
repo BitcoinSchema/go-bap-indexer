@@ -20,7 +20,6 @@ import (
 	"github.com/b-open-io/go-junglebus/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	fiberSwagger "github.com/swaggo/fiber-swagger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -33,6 +32,19 @@ var idColl, atColl, proColl *mongo.Collection
 var jb *junglebus.Client
 var currentBlock *models.BlockHeader
 
+// @title Sigma Identity API
+// @version 1.0
+// @description Bitcoin Attestation Protocol (BAP) indexer API for managing digital identities and attestations
+// @termsOfService https://api.sigmaidentity.com/terms/
+// @contact.name Sigma Identity API Support
+// @contact.url https://github.com/BitcoinSchema/go-bap-indexer
+// @contact.email support@sigmaidentity.com
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+// @host api.sigmaidentity.com
+// @BasePath /v1
+// @schemes https
+
 // @Summary Get root endpoint
 // @Description Returns a hello world message
 // @Tags root
@@ -44,14 +56,14 @@ func rootHandler(c *fiber.Ctx) error {
 	return c.SendString("Hello, World 👋!")
 }
 
-// @Summary Get attestation
-// @Description Get an attestation by its hash
+// @Summary Get attestation by hash
+// @Description Retrieves an attestation using its unique hash identifier
 // @Tags attestation
 // @Accept json
 // @Produce json
 // @Param hash body string true "Attestation hash"
-// @Success 200 {object} Response
-// @Failure 404 {object} Response
+// @Success 200 {object} Response{result=types.Attestation} "Successful response with attestation data"
+// @Failure 404 {object} Response "Attestation not found"
 // @Router /attestation/get [post]
 func getAttestationHandler(c *fiber.Ctx) error {
 	req := map[string]string{}
@@ -293,52 +305,9 @@ func Start() {
 		AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
 	}))
 
-	// Swagger documentation routes
-	app.Get("/swagger/*", fiberSwagger.WrapHandler)
-
 	// Serve Redoc UI
 	app.Get("/docs", func(c *fiber.Ctx) error {
-		theme := `{
-			"colors": {
-				"primary": {
-					"main": "#4a90e2"
-				},
-				"text": {
-					"primary": "#ffffff",
-					"secondary": "#b3b3b3"
-				},
-				"gray": {
-					"50": "#ffffff",
-					"100": "#f5f5f5"
-				},
-				"border": {
-					"dark": "#343434",
-					"light": "#343434"
-				},
-				"http": {
-					"get": "#4a90e2",
-					"post": "#49cc90",
-					"delete": "#f93e3e"
-				}
-			},
-			"typography": {
-				"fontSize": "16px",
-				"lineHeight": "1.5em",
-				"fontFamily": "Roboto, sans-serif",
-				"headings": {
-					"fontFamily": "Montserrat, sans-serif"
-				}
-			},
-			"sidebar": {
-				"backgroundColor": "#1a1a1a",
-				"textColor": "#ffffff"
-			},
-			"rightPanel": {
-				"backgroundColor": "#262626"
-			}
-		}`
-
-		html := fmt.Sprintf(`<!DOCTYPE html>
+		html := `<!DOCTYPE html>
 <html>
 <head>
 	<title>Sigma Identity API Documentation</title>
@@ -349,22 +318,27 @@ func Start() {
 		body {
 			margin: 0;
 			padding: 0;
-			background-color: #1a1a1a;
 		}
 	</style>
 </head>
 <body>
 	<redoc 
-		spec-url='/swagger/doc.json'
-		theme='%s'
+		spec-url='/docs.json'
+		theme="dark"
 		show-extensions="true"
 	></redoc>
 	<script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
 </body>
-</html>`, theme)
+</html>`
 
 		c.Set("Content-Type", "text/html")
 		return c.SendString(html)
+	})
+
+	// Serve OpenAPI/Swagger JSON
+	app.Get("/docs.json", func(c *fiber.Ctx) error {
+		c.Set("Content-Type", "application/json")
+		return c.SendFile("docs/swagger.json")
 	})
 
 	// Define routes with their handlers
@@ -372,6 +346,17 @@ func Start() {
 	app.Post("/v1/attestation/get", getAttestationHandler)
 	app.Get("/v1/person/:field/:bapId", getPersonFieldHandler)
 
+	// @Summary Get profiles with pagination
+	// @Description Retrieves a paginated list of profiles
+	// @Tags profile
+	// @Accept json
+	// @Produce json
+	// @Param offset query integer false "Number of records to skip (default: 0)"
+	// @Param limit query integer false "Number of records to return (default: 20, max: 100)"
+	// @Success 200 {object} Response{result=[]map[string]interface{}} "List of profiles"
+	// @Failure 400 {object} Response "Invalid pagination parameters"
+	// @Failure 500 {object} Response "Server error"
+	// @Router /profile [get]
 	app.Get("/v1/profile", func(c *fiber.Ctx) error {
 		// Default pagination parameters
 		offset := int64(0)
@@ -458,6 +443,17 @@ func Start() {
 		})
 	})
 
+	// @Summary Get identities with pagination
+	// @Description Retrieves a paginated list of identities with their associated profiles
+	// @Tags identity
+	// @Accept json
+	// @Produce json
+	// @Param offset query integer false "Number of records to skip (default: 0)"
+	// @Param limit query integer false "Number of records to return (default: 20, max: 100)"
+	// @Success 200 {object} Response{result=[]map[string]interface{}} "List of identities with profiles"
+	// @Failure 400 {object} Response "Invalid pagination parameters"
+	// @Failure 500 {object} Response "Server error"
+	// @Router /identity [get]
 	app.Get("/v1/identity", func(c *fiber.Ctx) error {
 		// Default pagination parameters
 		offset := int64(0)
@@ -570,6 +566,17 @@ func Start() {
 		})
 	})
 
+	// @Summary Get identity history
+	// @Description Retrieves the history of profile changes for a specific identity
+	// @Tags identity
+	// @Accept json
+	// @Produce json
+	// @Param idKey body string true "Identity key"
+	// @Success 200 {object} Response{result=[]map[string]interface{}} "History of profile changes"
+	// @Failure 400 {object} Response "Missing or invalid idKey"
+	// @Failure 404 {object} Response "Identity not found"
+	// @Failure 500 {object} Response "Server error"
+	// @Router /identity/history [post]
 	app.Post("/v1/identity/history", func(c *fiber.Ctx) error {
 		// Parse the request body
 		req := map[string]string{}
@@ -638,6 +645,16 @@ func Start() {
 		})
 	})
 
+	// @Summary Get identity by ID
+	// @Description Retrieves an identity by its unique identifier
+	// @Tags identity
+	// @Accept json
+	// @Produce json
+	// @Param idKey body string true "Identity key"
+	// @Success 200 {object} Response{result=types.Identity} "Identity with profile data"
+	// @Failure 404 {object} Response "Identity not found"
+	// @Failure 500 {object} Response "Server error"
+	// @Router /identity/get [post]
 	app.Post("/v1/identity/get", func(c *fiber.Ctx) error {
 		req := map[string]string{}
 		c.BodyParser(&req)
@@ -671,12 +688,16 @@ func Start() {
 		})
 	})
 
-	// Define a struct to match the incoming JSON structure
-	type IdentitiesRequest struct {
-		IdKeys    []string `json:"idKeys"`
-		Addresses []string `json:"addresses"`
-	}
-
+	// @Summary Get multiple identities
+	// @Description Retrieves multiple identities by their IDs or addresses
+	// @Tags identity
+	// @Accept json
+	// @Produce json
+	// @Param request body IdentitiesRequest true "List of identity keys or addresses"
+	// @Success 200 {object} Response{result=[]types.Identity} "List of identities with profiles"
+	// @Failure 400 {object} Response "Invalid request or missing parameters"
+	// @Failure 500 {object} Response "Server error"
+	// @Router /identities/get [post]
 	app.Post("/v1/identities/get", func(c *fiber.Ctx) error {
 		// Parse the request body into the IdentityRequest struct
 		req := IdentitiesRequest{}
@@ -766,6 +787,15 @@ func Start() {
 		})
 	})
 
+	// @Summary Get identity by address
+	// @Description Retrieves an identity using a blockchain address
+	// @Tags identity
+	// @Accept json
+	// @Produce json
+	// @Param address body string true "Blockchain address"
+	// @Success 200 {object} Response{result=types.Identity} "Identity data"
+	// @Failure 404 {object} Response "Identity not found"
+	// @Router /identity/getByAddress [post]
 	app.Post("/v1/identity/getByAddress", func(c *fiber.Ctx) error {
 		req := map[string]string{}
 		c.BodyParser(&req)
@@ -784,78 +814,45 @@ func Start() {
 		})
 	})
 
+	// @Summary Get identity DID
+	// @Description Retrieves the Decentralized Identifier (DID) for an identity
+	// @Tags identity
+	// @Accept json
+	// @Produce json
+	// @Param idKey body string true "Identity key"
+	// @Success 200 {string} string "Identity DID"
+	// @Failure 400 {object} Response "Invalid request"
+	// @Failure 404 {object} Response "Identity not found"
+	// @Router /identity/did [post]
 	app.Post("/v1/identity/did", func(c *fiber.Ctx) error {
 		return c.SendString("Get Identity DID")
 	})
 
-	app.Post("/identity/didByAddress", func(c *fiber.Ctx) error {
+	// @Summary Get identity DID by address
+	// @Description Retrieves the Decentralized Identifier (DID) for an identity by address
+	// @Tags identity
+	// @Accept json
+	// @Produce json
+	// @Param address body string true "Blockchain address"
+	// @Success 200 {string} string "Identity DID"
+	// @Failure 400 {object} Response "Invalid request"
+	// @Failure 404 {object} Response "Identity not found"
+	// @Router /identity/didByAddress [post]
+	app.Post("/v1/identity/didByAddress", func(c *fiber.Ctx) error {
 		return c.SendString("Get Identity DID By Address")
 	})
 
-	// app.Post("/v1/attestation/valid", func(c *fiber.Ctx) error {
-	// 	req := &AttestationValidParams{}
-	// 	c.BodyParser(&req)
-	// 	att := &types.Attestation{}
-
-	// 	if req.Address != "" {
-	// 		id := &types.Identity{}
-	// 		if err := idColl.FindOne(c.Context(), bson.M{"addresses.address": req.Address}).Decode(id); err == mongo.ErrNoDocuments {
-	// 			return c.Status(fiber.StatusNotFound).JSON(Response{
-	// 				Status:  "ERROR",
-	// 				Message: "Identity could not be found",
-	// 			})
-	// 		} else if err != nil {
-	// 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
-	// 				Status:  "ERROR",
-	// 				Message: err.Error(),
-	// 			})
-	// 		}
-	// 		req.IDKey = id.IDKey
-	// 	}
-
-	// 	if req.Hash != "" {
-	// 		if err := atColl.FindOne(c.Context(), bson.M{"_id": req.Hash}).Decode(att); err == mongo.ErrNoDocuments {
-	// 			return c.Status(fiber.StatusNotFound).JSON(Response{
-	// 				Status:  "ERROR",
-	// 				Message: "Attestation could not be found",
-	// 			})
-	// 		} else if err != nil {
-	// 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
-	// 				Status:  "ERROR",
-	// 				Message: err.Error(),
-	// 			})
-	// 		}
-	// 	} else {
-	// 		if req.Urn == "" {
-
-	// 			req.Urn = fmt.Sprintf("urn:bap:id:%s:%s:%s", req.Attribute, req.Value, req.Nonce)
-	// 		}
-	// 		urnHash := sha256.Sum256([]byte(req.Urn))
-
-	// 		if err := atColl.FindOne(c.Context(), bson.M{"_id": hex.EncodeToString(urnHash[:])}).Decode(att); err == mongo.ErrNoDocuments {
-	// 			return c.Status(fiber.StatusNotFound).JSON(Response{
-	// 				Status:  "ERROR",
-	// 				Message: "Attestation could not be found",
-	// 			})
-	// 		} else if err != nil {
-	// 			return c.Status(fiber.StatusInternalServerError).JSON(Response{
-	// 				Status:  "ERROR",
-	// 				Message: err.Error(),
-	// 			})
-	// 		}
-	// 	}
-	// 	att.Valid = &TRUE
-
-	// 	return c.JSON(Response{
-	// 		Status: "OK",
-	// 		Result: att,
-	// 	})
-	// })
-
-	app.Post("/v1/identity/valid", func(c *fiber.Ctx) error {
-		return c.SendString("Validate Identity")
-	})
-
+	// @Summary Validate identity by address
+	// @Description Validates an identity at a specific block height or timestamp
+	// @Tags identity
+	// @Accept json
+	// @Produce json
+	// @Param request body IdentityValidByAddressParams true "Validation parameters including address, block height, and timestamp"
+	// @Success 200 {object} Response{result=IdentityValidResponse} "Validation result with identity and profile data"
+	// @Failure 400 {object} Response "Invalid request parameters"
+	// @Failure 404 {object} Response "Identity not found"
+	// @Failure 500 {object} Response "Server error"
+	// @Router /identity/validByAddress [post]
 	app.Post("/v1/identity/validByAddress", func(c *fiber.Ctx) error {
 		req := &IdentityValidByAddressParams{}
 		c.BodyParser(&req)

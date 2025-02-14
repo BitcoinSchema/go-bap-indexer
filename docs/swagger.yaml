@@ -1,14 +1,67 @@
+basePath: /v1
 definitions:
   server.Response:
+    description: Standard API response wrapper
     properties:
       message:
+        description: Optional error message
+        example: Operation completed successfully
         type: string
-      result: {}
+      result:
+        description: Response payload
       status:
+        description: Status of the response ("OK" or "ERROR")
+        example: OK
         type: string
     type: object
+  types.Attestation:
+    properties:
+      attribute:
+        type: string
+      hash:
+        type: string
+      nonce:
+        type: string
+      signers:
+        items:
+          $ref: '#/definitions/types.Signer'
+        type: array
+      urn:
+        type: string
+      value:
+        type: string
+    type: object
+  types.Signer:
+    properties:
+      block:
+        type: integer
+      idKey:
+        type: string
+      revoked:
+        type: boolean
+      sequence:
+        type: integer
+      signingAddress:
+        type: string
+      timestamp:
+        type: integer
+      txId:
+        type: string
+    type: object
+host: api.sigmaidentity.com
 info:
-  contact: {}
+  contact:
+    email: support@sigmaidentity.com
+    name: Sigma Identity API Support
+    url: https://github.com/BitcoinSchema/go-bap-indexer
+  description: Bitcoin Attestation Protocol (BAP) indexer API for managing digital
+    identities and attestations
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: https://api.sigmaidentity.com/terms/
+  title: Sigma Identity API
+  version: "1.0"
 paths:
   /:
     get:
@@ -29,7 +82,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Get an attestation by its hash
+      description: Retrieves an attestation using its unique hash identifier
       parameters:
       - description: Attestation hash
         in: body
@@ -41,14 +94,19 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Successful response with attestation data
           schema:
-            $ref: '#/definitions/server.Response'
+            allOf:
+            - $ref: '#/definitions/server.Response'
+            - properties:
+                result:
+                  $ref: '#/definitions/types.Attestation'
+              type: object
         "404":
-          description: Not Found
+          description: Attestation not found
           schema:
             $ref: '#/definitions/server.Response'
-      summary: Get attestation
+      summary: Get attestation by hash
       tags:
       - attestation
   /person/{field}/{bapId}:
@@ -90,4 +148,6 @@ paths:
       summary: Get person field
       tags:
       - person
+schemes:
+- https
 swagger: "2.0"
