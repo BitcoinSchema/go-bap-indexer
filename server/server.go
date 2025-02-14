@@ -298,26 +298,7 @@ func Start() {
 
 	// Serve Redoc UI
 	app.Get("/docs", func(c *fiber.Ctx) error {
-		c.Type("html")
-		return c.SendString(`<!DOCTYPE html>
-<html>
-<head>
-	<title>Sigma Identity API Documentation</title>
-	<meta charset="utf-8"/>
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
-	<style>
-		body {
-			margin: 0;
-			padding: 0;
-			background-color: #1a1a1a;
-		}
-	</style>
-</head>
-<body>
-	<redoc 
-		spec-url='/swagger/doc.json'
-		theme='{
+		theme := `{
 			"colors": {
 				"primary": {
 					"main": "#4a90e2"
@@ -355,12 +336,35 @@ func Start() {
 			"rightPanel": {
 				"backgroundColor": "#262626"
 			}
-		}'
+		}`
+
+		html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+	<title>Sigma Identity API Documentation</title>
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
+	<style>
+		body {
+			margin: 0;
+			padding: 0;
+			background-color: #1a1a1a;
+		}
+	</style>
+</head>
+<body>
+	<redoc 
+		spec-url='/swagger/doc.json'
+		theme='%s'
 		show-extensions="true"
 	></redoc>
 	<script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
 </body>
-</html>`)
+</html>`, theme)
+
+		c.Set("Content-Type", "text/html")
+		return c.SendString(html)
 	})
 
 	// Define routes with their handlers
