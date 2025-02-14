@@ -1,0 +1,93 @@
+definitions:
+  server.Response:
+    properties:
+      message:
+        type: string
+      result: {}
+      status:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /:
+    get:
+      consumes:
+      - application/json
+      description: Returns a hello world message
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: "Hello, World \U0001F44B!"
+          schema:
+            type: string
+      summary: Get root endpoint
+      tags:
+      - root
+  /attestation/get:
+    post:
+      consumes:
+      - application/json
+      description: Get an attestation by its hash
+      parameters:
+      - description: Attestation hash
+        in: body
+        name: hash
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/server.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/server.Response'
+      summary: Get attestation
+      tags:
+      - attestation
+  /person/{field}/{bapId}:
+    get:
+      consumes:
+      - application/json
+      description: Get a specific field from a person's profile
+      parameters:
+      - description: Field name
+        in: path
+        name: field
+        required: true
+        type: string
+      - description: BAP ID
+        in: path
+        name: bapId
+        required: true
+        type: string
+      produces:
+      - application/json
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/server.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/server.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/server.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.Response'
+      summary: Get person field
+      tags:
+      - person
+swagger: "2.0"

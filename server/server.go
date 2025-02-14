@@ -14,11 +14,13 @@ import (
 	"time"
 
 	"github.com/BitcoinSchema/go-bap-indexer/database"
+	_ "github.com/BitcoinSchema/go-bap-indexer/docs"
 	"github.com/BitcoinSchema/go-bap-indexer/types"
 	"github.com/b-open-io/go-junglebus"
 	"github.com/b-open-io/go-junglebus/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	fiberSwagger "github.com/swaggo/fiber-swagger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -30,6 +32,231 @@ var conn *database.Connection
 var idColl, atColl, proColl *mongo.Collection
 var jb *junglebus.Client
 var currentBlock *models.BlockHeader
+
+// @Summary Get root endpoint
+// @Description Returns a hello world message
+// @Tags root
+// @Accept json
+// @Produce json
+// @Success 200 {string} string "Hello, World 👋!"
+// @Router / [get]
+func rootHandler(c *fiber.Ctx) error {
+	return c.SendString("Hello, World 👋!")
+}
+
+// @Summary Get attestation
+// @Description Get an attestation by its hash
+// @Tags attestation
+// @Accept json
+// @Produce json
+// @Param hash body string true "Attestation hash"
+// @Success 200 {object} Response
+// @Failure 404 {object} Response
+// @Router /attestation/get [post]
+func getAttestationHandler(c *fiber.Ctx) error {
+	req := map[string]string{}
+	c.BodyParser(&req)
+	att := &types.Attestation{}
+
+	if err := atColl.FindOne(c.Context(), bson.M{"_id": req["hash"]}).Decode(att); err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(Response{
+			Status:  "ERROR",
+			Message: "Attestation could not be found",
+		})
+	}
+
+	return c.JSON(Response{
+		Status: "OK",
+		Result: att,
+	})
+}
+
+// @Summary Get person field
+// @Description Get a specific field from a person's profile
+// @Tags person
+// @Accept json
+// @Produce json,octet-stream
+// @Param field path string true "Field name"
+// @Param bapId path string true "BAP ID"
+// @Success 200 {object} Response
+// @Failure 400 {object} Response
+// @Failure 404 {object} Response
+// @Failure 500 {object} Response
+// @Router /person/{field}/{bapId} [get]
+func getPersonFieldHandler(c *fiber.Ctx) error {
+	field := c.Params("field")
+	if field == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(Response{
+			Status:  "ERROR",
+			Message: "Field is required",
+		})
+	}
+
+	bapId := c.Params("bapId")
+	if bapId == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(Response{
+			Status:  "ERROR",
+			Message: "BAPID is required",
+		})
+	}
+
+	// Fetch the profile associated with the BAPID
+	profile := map[string]interface{}{}
+	if err := proColl.FindOne(c.Context(), bson.M{"_id": bapId}).Decode(&profile); err == mongo.ErrNoDocuments {
+		return c.Status(fiber.StatusNotFound).JSON(Response{
+			Status:  "ERROR",
+			Message: "Profile not found",
+		})
+	} else if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(Response{
+			Status:  "ERROR",
+			Message: err.Error(),
+		})
+	}
+
+	// if bap ID
+	// if len(bapId) > 30 {
+	// 	// TODO: consider it an address, find match based on match on addresses field
+
+	// }
+
+	// Extract the image URL from the profile's data field
+	data, dataExists := profile["data"].(map[string]interface{})
+	if !dataExists {
+		return c.Status(fiber.StatusNotFound).JSON(Response{
+			Status:  "ERROR",
+			Message: "Profile data not found",
+		})
+	}
+
+	imageUrl, imageExists := data[field].(string)
+	if !imageExists || strings.TrimSpace(imageUrl) == "" {
+		// return the default image url
+		imageUrl = "/096b5fdcb6e88f8f0325097acca2784eabd62cd4d1e692946695060aff3d6833_7"
+	}
+
+	// Check if the imageUrl is a raw txid (64 character hex string)
+	if len(imageUrl) == 64 && !strings.HasPrefix(imageUrl, "/") && !strings.HasPrefix(imageUrl, "http") && !strings.HasPrefix(imageUrl, "data:") {
+		imageUrl = "/" + imageUrl
+	}
+
+	if strings.HasPrefix(imageUrl, "data:") {
+		// Handle base64-encoded data URL
+		commaIndex := strings.Index(imageUrl, ",")
+		if commaIndex < 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Status:  "ERROR",
+				Message: "Invalid data URL format",
+			})
+		}
+
+		// Extract the metadata and data
+		// Remove "data:" prefix from metaData
+		metaData := strings.TrimPrefix(imageUrl[:commaIndex], "data:")
+		// metadata = image/jpeg;base64
+		metaDataParts := strings.Split(metaData, ";")
+
+		metaData = metaDataParts[0]
+		// metadata = image/jpeg
+
+		base64Data := imageUrl[commaIndex+1:]
+
+		// Parse the media type from the metadata
+		mediaType, _, err := mime.ParseMediaType(metaData)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Status:  "ERROR",
+				Message: "Invalid media type in data URL " + metaData + " " + err.Error(),
+			})
+		}
+
+		// image/jpeg;base64
+		log.Println(("Data URL: " + base64Data))
+
+		// Decode the base64 data
+		imgData, err := base64.StdEncoding.DecodeString(base64Data)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(Response{
+				Status:  "ERROR",
+				Message: "Failed to decode base64 image data",
+			})
+		}
+
+		// Set the Content-Type header
+		c.Set("Content-Type", mediaType)
+
+		// Return the image data
+		return c.Send(imgData)
+	} else {
+		// Handle regular image URL
+		// If the image URL uses a custom protocol (e.g., bitfs://), handle it accordingly
+		// Handle regular image URL
+		if strings.HasPrefix(imageUrl, "bitfs://") {
+			// Convert bitfs://<txid>.out.<vout>.<script_chunk> to https://ordfs.network/<txid>_<vout>
+			baseUrl := "https://ordfs.network/"
+			// Remove the "bitfs://" prefix
+			path := strings.TrimPrefix(imageUrl, "bitfs://")
+			// Split the path by "."
+			parts := strings.Split(path, ".")
+			if len(parts) >= 3 && parts[1] == "out" {
+				txid := parts[0]
+				// vout := parts[2]
+				// Construct the new URL
+				imageUrl = baseUrl + txid // + "_" + vout
+			} else {
+				// Handle error: unexpected format
+				return c.Status(fiber.StatusBadRequest).JSON(Response{
+					Status:  "ERROR",
+					Message: "Invalid bitfs URL format",
+				})
+			}
+		}
+
+		// Fetch the image data from the URL
+		// if imageUrl.startsWith
+		if strings.HasPrefix(imageUrl, "/") {
+			imageUrl = "https://ordfs.network" + imageUrl
+		}
+
+		resp, err := http.Get(imageUrl)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Status:  "ERROR",
+				Message: "Failed to fetch image at " + imageUrl + err.Error(),
+			})
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return c.Status(fiber.StatusNotFound).JSON(Response{
+				Status:  "ERROR",
+				Message: "Image not found at the specified URL",
+			})
+		}
+
+		// Read the image data
+		imgData, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(Response{
+				Status:  "ERROR",
+				Message: "Failed to read image data",
+			})
+		}
+
+		// Determine the content type
+		contentType := resp.Header.Get("Content-Type")
+		if contentType == "" {
+			// Fallback to detecting content type from data
+			contentType = http.DetectContentType(imgData)
+		}
+
+		// Set the appropriate content type header
+		c.Set("Content-Type", contentType)
+
+		// Return the image data as the response
+		return c.Send(imgData)
+	}
+}
 
 func Start() {
 	var err error
@@ -66,220 +293,13 @@ func Start() {
 		AllowMethods: "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS", // Allow all methods
 	}))
 
-	// Define a route for the GET method on the root path '/'
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Hello, World 👋!")
-	})
+	// Swagger documentation route
+	app.Get("/swagger/*", fiberSwagger.WrapHandler)
 
-	app.Post("/v1/attestation/get", func(c *fiber.Ctx) error {
-		req := map[string]string{}
-		c.BodyParser(&req)
-		att := &types.Attestation{}
-
-		if err := atColl.FindOne(c.Context(), bson.M{"_id": req["hash"]}).Decode(att); err != nil {
-			return c.Status(fiber.StatusNotFound).JSON(Response{
-				Status:  "ERROR",
-				Message: "Attestation could not be found",
-			})
-		}
-
-		return c.JSON(Response{
-			Status: "OK",
-			Result: att,
-		})
-	})
-
-	// app.Post("/v1/identity/get", func(c *fiber.Ctx) error {
-	// 	req := map[string]string{}
-	// 	c.BodyParser(&req)
-	// 	id := &types.Identity{}
-	// 	if err := idColl.FindOne(c.Context(), bson.M{"_id": req["idKey"]}).Decode(id); err != nil {
-	// 		return c.Status(fiber.StatusNotFound).JSON(Response{
-	// 			Status:  "ERROR",
-	// 			Message: "Identity could not be found",
-	// 		})
-	// 	}
-
-	// 	return c.JSON(Response{
-	// 		Status: "OK",
-	// 		Result: id,
-	// 	})
-	// })
-
-	app.Get("/v1/person/:field/:bapId", func(c *fiber.Ctx) error {
-		field := c.Params("field")
-		if field == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
-				Status:  "ERROR",
-				Message: "Field is required",
-			})
-		}
-
-		bapId := c.Params("bapId")
-		if bapId == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(Response{
-				Status:  "ERROR",
-				Message: "BAPID is required",
-			})
-		}
-
-		// Fetch the profile associated with the BAPID
-		profile := map[string]interface{}{}
-		if err := proColl.FindOne(c.Context(), bson.M{"_id": bapId}).Decode(&profile); err == mongo.ErrNoDocuments {
-			return c.Status(fiber.StatusNotFound).JSON(Response{
-				Status:  "ERROR",
-				Message: "Profile not found",
-			})
-		} else if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(Response{
-				Status:  "ERROR",
-				Message: err.Error(),
-			})
-		}
-
-		// if bap ID
-		// if len(bapId) > 30 {
-		// 	// TODO: consider it an address, find match based on match on addresses field
-
-		// }
-
-		// Extract the image URL from the profile's data field
-		data, dataExists := profile["data"].(map[string]interface{})
-		if !dataExists {
-			return c.Status(fiber.StatusNotFound).JSON(Response{
-				Status:  "ERROR",
-				Message: "Profile data not found",
-			})
-		}
-
-		imageUrl, imageExists := data[field].(string)
-		if !imageExists || strings.TrimSpace(imageUrl) == "" {
-			// return the default image url
-			imageUrl = "/096b5fdcb6e88f8f0325097acca2784eabd62cd4d1e692946695060aff3d6833_7"
-		}
-
-		// Check if the imageUrl is a raw txid (64 character hex string)
-		if len(imageUrl) == 64 && !strings.HasPrefix(imageUrl, "/") && !strings.HasPrefix(imageUrl, "http") && !strings.HasPrefix(imageUrl, "data:") {
-			imageUrl = "/" + imageUrl
-		}
-
-		if strings.HasPrefix(imageUrl, "data:") {
-			// Handle base64-encoded data URL
-			commaIndex := strings.Index(imageUrl, ",")
-			if commaIndex < 0 {
-				return c.Status(fiber.StatusBadRequest).JSON(Response{
-					Status:  "ERROR",
-					Message: "Invalid data URL format",
-				})
-			}
-
-			// Extract the metadata and data
-			// Remove "data:" prefix from metaData
-			metaData := strings.TrimPrefix(imageUrl[:commaIndex], "data:")
-			// metadata = image/jpeg;base64
-			metaDataParts := strings.Split(metaData, ";")
-
-			metaData = metaDataParts[0]
-			// metadata = image/jpeg
-
-			base64Data := imageUrl[commaIndex+1:]
-
-			// Parse the media type from the metadata
-			mediaType, _, err := mime.ParseMediaType(metaData)
-			if err != nil {
-				return c.Status(fiber.StatusBadRequest).JSON(Response{
-					Status:  "ERROR",
-					Message: "Invalid media type in data URL " + metaData + " " + err.Error(),
-				})
-			}
-
-			// image/jpeg;base64
-			log.Println(("Data URL: " + base64Data))
-
-			// Decode the base64 data
-			imgData, err := base64.StdEncoding.DecodeString(base64Data)
-			if err != nil {
-				return c.Status(fiber.StatusBadRequest).JSON(Response{
-					Status:  "ERROR",
-					Message: "Failed to decode base64 image data",
-				})
-			}
-
-			// Set the Content-Type header
-			c.Set("Content-Type", mediaType)
-
-			// Return the image data
-			return c.Send(imgData)
-		} else {
-			// Handle regular image URL
-			// If the image URL uses a custom protocol (e.g., bitfs://), handle it accordingly
-			// Handle regular image URL
-			if strings.HasPrefix(imageUrl, "bitfs://") {
-				// Convert bitfs://<txid>.out.<vout>.<script_chunk> to https://ordfs.network/<txid>_<vout>
-				baseUrl := "https://ordfs.network/"
-				// Remove the "bitfs://" prefix
-				path := strings.TrimPrefix(imageUrl, "bitfs://")
-				// Split the path by "."
-				parts := strings.Split(path, ".")
-				if len(parts) >= 3 && parts[1] == "out" {
-					txid := parts[0]
-					// vout := parts[2]
-					// Construct the new URL
-					imageUrl = baseUrl + txid // + "_" + vout
-				} else {
-					// Handle error: unexpected format
-					return c.Status(fiber.StatusBadRequest).JSON(Response{
-						Status:  "ERROR",
-						Message: "Invalid bitfs URL format",
-					})
-				}
-			}
-
-			// Fetch the image data from the URL
-			// if imageUrl.startsWith
-			if strings.HasPrefix(imageUrl, "/") {
-				imageUrl = "https://ordfs.network" + imageUrl
-			}
-
-			resp, err := http.Get(imageUrl)
-			if err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(Response{
-					Status:  "ERROR",
-					Message: "Failed to fetch image at " + imageUrl + err.Error(),
-				})
-			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode != http.StatusOK {
-				return c.Status(fiber.StatusNotFound).JSON(Response{
-					Status:  "ERROR",
-					Message: "Image not found at the specified URL",
-				})
-			}
-
-			// Read the image data
-			imgData, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(Response{
-					Status:  "ERROR",
-					Message: "Failed to read image data",
-				})
-			}
-
-			// Determine the content type
-			contentType := resp.Header.Get("Content-Type")
-			if contentType == "" {
-				// Fallback to detecting content type from data
-				contentType = http.DetectContentType(imgData)
-			}
-
-			// Set the appropriate content type header
-			c.Set("Content-Type", contentType)
-
-			// Return the image data as the response
-			return c.Send(imgData)
-		}
-	})
+	// Define routes with their handlers
+	app.Get("/", rootHandler)
+	app.Post("/v1/attestation/get", getAttestationHandler)
+	app.Get("/v1/person/:field/:bapId", getPersonFieldHandler)
 
 	app.Get("/v1/profile", func(c *fiber.Ctx) error {
 		// Default pagination parameters
