@@ -324,7 +324,7 @@ func Start() {
 <body>
 	<redoc 
 		spec-url='/docs.json'
-		theme="dark"
+		theme='{"theme": "dark"}'
 		show-extensions="true"
 	></redoc>
 	<script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
