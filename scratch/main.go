@@ -5,8 +5,8 @@ import (
 	"log"
 
 	"github.com/BitcoinSchema/go-bap-indexer/crawler"
+	"github.com/bitcoin-sv/go-sdk/transaction"
 	"github.com/bitcoinschema/go-bob"
-	"github.com/libsv/go-bt/v2"
 )
 
 func main() {
@@ -16,7 +16,7 @@ func main() {
 	blockTime := uint32(1665592880)
 
 	// log.Printf("[TX]: %d: %s | Data Length: %d", blockHeight, tx.Id, len(tx.Transaction))
-	t, err := bt.NewTxFromBytes(rawtx)
+	t, err := transaction.NewTransactionFromBytes(rawtx)
 	if err != nil {
 		log.Printf("[ERROR]: %v", err)
 		return

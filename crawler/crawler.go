@@ -15,10 +15,10 @@ import (
 	"github.com/BitcoinSchema/go-bap-indexer/types"
 	"github.com/b-open-io/go-junglebus"
 	"github.com/b-open-io/go-junglebus/models"
+	"github.com/bitcoin-sv/go-sdk/transaction"
 	"github.com/bitcoinschema/go-aip"
 	"github.com/bitcoinschema/go-bap"
 	"github.com/bitcoinschema/go-bob"
-	"github.com/libsv/go-bt/v2"
 	"github.com/ttacon/chalk"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -180,7 +180,7 @@ func CancelCrawl(newBlockHeight int) {
 func processTransactionEvent(rawtx []byte, blockHeight uint32, blockTime uint32) {
 	if len(rawtx) > 0 {
 		// log.Printf("[TX]: %d: %s | Data Length: %d", blockHeight, tx.Id, len(tx.Transaction))
-		t, err := bt.NewTxFromBytes(rawtx)
+		t, err := transaction.NewTransactionFromBytes(rawtx)
 		if err != nil {
 			log.Printf("[ERROR]: %v", err)
 			return
@@ -198,7 +198,7 @@ func processTransactionEvent(rawtx []byte, blockHeight uint32, blockTime uint32)
 }
 
 func processMempoolEvent(rawtx []byte) {
-	t, err := bt.NewTxFromBytes(rawtx)
+	t, err := transaction.NewTransactionFromBytes(rawtx)
 	if err != nil {
 		log.Printf("[ERROR]: %v", err)
 		return
@@ -255,7 +255,8 @@ func ProcessTx(bobTx *bob.Tx) {
 				case aip.Prefix:
 					if bapAip != nil {
 						aipOut := aip.NewFromTape(tape)
-						aipOut.SetDataFromTapes(out.Tape)
+						// TODO: Use the correct instance index
+						aipOut.SetDataFromTapes(out.Tape, 0)
 						bapAip.AIP = aipOut
 						baps = append(baps, *bapAip)
 						bapAip = nil
