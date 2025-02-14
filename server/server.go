@@ -298,68 +298,69 @@ func Start() {
 
 	// Serve Redoc UI
 	app.Get("/docs", func(c *fiber.Ctx) error {
+		c.Type("html")
 		return c.SendString(`<!DOCTYPE html>
-		<html>
-		<head>
-			<title>Sigma Identity API Documentation</title>
-			<meta charset="utf-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1">
-			<link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
-			<style>
-				body {
-					margin: 0;
-					padding: 0;
-					background-color: #1a1a1a;
+<html>
+<head>
+	<title>Sigma Identity API Documentation</title>
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
+	<style>
+		body {
+			margin: 0;
+			padding: 0;
+			background-color: #1a1a1a;
+		}
+	</style>
+</head>
+<body>
+	<redoc 
+		spec-url='/swagger/doc.json'
+		theme='{
+			"colors": {
+				"primary": {
+					"main": "#4a90e2"
+				},
+				"text": {
+					"primary": "#ffffff",
+					"secondary": "#b3b3b3"
+				},
+				"gray": {
+					"50": "#ffffff",
+					"100": "#f5f5f5"
+				},
+				"border": {
+					"dark": "#343434",
+					"light": "#343434"
+				},
+				"http": {
+					"get": "#4a90e2",
+					"post": "#49cc90",
+					"delete": "#f93e3e"
 				}
-			</style>
-		</head>
-		<body>
-			<redoc 
-				spec-url='/swagger/doc.json'
-				theme='{
-					"colors": {
-						"primary": {
-							"main": "#4a90e2"
-						},
-						"text": {
-							"primary": "#ffffff",
-							"secondary": "#b3b3b3"
-						},
-						"gray": {
-							"50": "#ffffff",
-							"100": "#f5f5f5"
-						},
-						"border": {
-							"dark": "#343434",
-							"light": "#343434"
-						},
-						"http": {
-							"get": "#4a90e2",
-							"post": "#49cc90",
-							"delete": "#f93e3e"
-						}
-					},
-					"typography": {
-						"fontSize": "16px",
-						"lineHeight": "1.5em",
-						"fontFamily": "Roboto, sans-serif",
-						"headings": {
-							"fontFamily": "Montserrat, sans-serif"
-						}
-					},
-					"sidebar": {
-						"backgroundColor": "#1a1a1a",
-						"textColor": "#ffffff"
-					},
-					"rightPanel": {
-						"backgroundColor": "#262626"
-					}
-				}'
-				show-extensions="true"
-			></redoc>
-			<script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
-		</body>
-		</html>`)
+			},
+			"typography": {
+				"fontSize": "16px",
+				"lineHeight": "1.5em",
+				"fontFamily": "Roboto, sans-serif",
+				"headings": {
+					"fontFamily": "Montserrat, sans-serif"
+				}
+			},
+			"sidebar": {
+				"backgroundColor": "#1a1a1a",
+				"textColor": "#ffffff"
+			},
+			"rightPanel": {
+				"backgroundColor": "#262626"
+			}
+		}'
+		show-extensions="true"
+	></redoc>
+	<script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+</body>
+</html>`)
 	})
 
 	// Define routes with their handlers
