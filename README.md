@@ -89,18 +89,35 @@ The indexer will resume processing from the specified block height.
 
 ## API Documentation
 
-### Swagger/OpenAPI
+The API documentation is available in two formats:
 
-The API documentation is available through Swagger UI at:
+### Swagger UI
 ```
-http://localhost:3000/swagger/
+https://api.sigmaidentity.com/swagger/
 ```
 
-This provides an interactive documentation interface where you can:
-- View all available endpoints
-- Test API calls directly from the browser
-- See request/response schemas
-- Download OpenAPI specification
+The classic Swagger UI provides:
+- Interactive API documentation
+- Try-it-out functionality for testing endpoints
+- Raw OpenAPI specification viewing
+
+### Redoc (Modern Dark Theme)
+```
+https://api.sigmaidentity.com/docs
+```
+
+Redoc provides a modern, responsive interface with:
+- Dark theme by default
+- Better readability and organization
+- Improved search functionality
+- Three-column layout for better navigation
+- Automatic code sample generation
+
+Both interfaces use the same OpenAPI specification and provide:
+- Complete endpoint documentation
+- Request/response schemas
+- Authentication requirements
+- Example requests and responses
 
 ### API Endpoints
 
