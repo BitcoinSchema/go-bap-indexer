@@ -29,7 +29,7 @@ func Connect() error {
 	if len(bmapMongoURL) == 0 {
 		return fmt.Errorf("set MONGO_PRIVATE_URL before running %s", bmapMongoURL)
 	}
-	fmt.Println("Connecting to mongo", bmapMongoURL)
+	fmt.Println("Connecting to mongo...")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -58,7 +58,6 @@ func Connect() error {
 
 func GetConnection() *Connection {
 	if globalClient == nil {
-		log.Println("Connecting to mongo")
 		err := Connect()
 		if err != nil {
 			log.Fatal(err)
